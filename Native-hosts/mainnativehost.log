@@ -1,0 +1,14 @@
+2024-10-26 00:30:07 - All logs cleared on initialization.
+2024-10-26 00:30:07 - Sound native host activated
+2024-10-26 00:30:07 - Response: {}
+2024-10-26 00:30:07 - Raw length bytes: b''
+2024-10-26 00:30:07 - Did not read 4 bytes for message length, exiting
+2024-10-26 00:30:07 - Sound native host started
+2024-10-26 00:30:07 - Raw length bytes: b'\x17\x00\x00\x00'
+2024-10-26 00:30:07 - Message length: 23
+2024-10-26 00:30:07 - Read 23 bytes, total read: 23 bytes
+2024-10-26 00:30:07 - Raw message bytes: b'{"action":"keep_alive"}'
+2024-10-26 00:30:07 - Message received: {"action":"keep_alive"}
+2024-10-26 00:30:07 - JSON message: {'action': 'keep_alive'}
+2024-10-26 00:30:07 - Received keep_alive message from Chrome extension
+2024-10-26 00:30:07 - Monitoring computer comms
