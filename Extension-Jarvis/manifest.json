@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Jarvis Extension BETA",
+  "version": "1.0",
+  "description": "A basic Chrome extension with maximum capabilities.",
+  "host_permissions": ["*://*/*"],
+  "permissions": [
+    "activeTab",
+    "nativeMessaging",
+    "storage",
+    "tabs"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "images/icon16.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "type": "module"
+    }
+  ],
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  }
+}
