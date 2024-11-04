@@ -1,7 +1,16 @@
 """
-Name: template_protocol.py
-Description: This is the template protocol
-Tags: template
+Name: map_protocols.py
+Description: This creates the map file of all protocols in the system.
+Prerequisites: None
+Inputs: None
+Outputs: protocol_mapping.json
+Tags: protocol, mapping, json
+Subprotocols: None
+Location: Protocols/Protocol-analysis-protocols/map_protocols.py
+
+
+Author: Nguyen Ba Phi
+Date: 2024-11-4
 """
 
 

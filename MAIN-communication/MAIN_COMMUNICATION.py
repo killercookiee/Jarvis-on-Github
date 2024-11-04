@@ -330,7 +330,10 @@ if __name__ == "__main__":
 
 
         # Other processes that starts upon startup:
-        # example code
+        log("starting MAP_PROTOCOLS_SUBPROCESS")
+        activate_subprocess(subprocess_paths['MAP_PROTOCOLS_SUBPROCESS'])
+        time.sleep(5)
+        send_message_subprocess(message="'action': 'start", receiver=subprocess_paths['SOUND_ACTIVATION_SUBPROCESS'])
 
         # Keep MAIN_COMMUNICATION running
         while True:
