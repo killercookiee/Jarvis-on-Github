@@ -33,7 +33,7 @@ if not os.path.exists(LOG_FILE_PATH):
         pass
 
 
-MAIN_PATH = "/Users/killercookie/Jarvis/MAIN-communication/MAIN_COMMUNICATION.py"
+MAIN_PATH = "/Users/killercookie/Jarvis-on-Github/MAIN-communication/MAIN_COMMUNICATION.py"
 
 
 context = zmq.Context()

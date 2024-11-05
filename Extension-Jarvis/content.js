@@ -1,9 +1,17 @@
 //// Change code below 
 
-const Protocols = {
+const Tab_Protocols = {
   ChatGPT_Protocols: {
     utilityProtocols: {
       async observeForElement(selector, timeout = 15000) {
+        // Name: observeForElement
+        // Description: This function observes the DOM for the presence of an element matching the given selector.
+        // Prerequisites: None
+        // Inputs: Name of the element selector to observe, timeout duration in milliseconds (default: 15000ms)
+        // Outputs: foundElement (Element): The found element matching the selector
+        // Tags: DOM, MutationObserver, Promise, Timeout, element, selector
+        // Subprotocols: None
+        // Location: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElement
         
         const element = document.querySelector(selector);
         if (element) {
@@ -32,6 +40,15 @@ const Protocols = {
       },
 
       async clickVcRecordButton() {
+        // Name: clickVcRecordButton
+        // Description: This function clicks the "vc-record-button" element in the DOM to start or stop recording audio.
+        // Prerequisites: ChatGPT conversation is active and Mia extension is installed
+        // Inputs: None
+        // Outputs: None
+        // Tags: DOM, Button, Click, Audio Recording, ChatGPT
+        // Subprotocols: observeForElement
+        // Location: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.clickVcRecordButton
+
           const buttonSelector = '#vc-record-button';
 
           // Check if the button already exists
@@ -55,6 +72,15 @@ const Protocols = {
       },
       
       async observeForElementGone(selector, timeout = 60000) {
+        // Name: observeForElementGone
+        // Description: This function observes the DOM for the disappearance of an element matching the given selector.
+        // Prerequisites: None
+        // Inputs: Name of the element selector to observe, timeout duration in milliseconds (default: 60000ms)
+        // Outputs: None
+        // Tags: DOM, MutationObserver, Promise, Timeout, element, selector
+        // Subprotocols: None
+        // Location: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElementGone
+
         return new Promise((resolve, reject) => {
             const startTime = Date.now();
 
@@ -72,6 +98,15 @@ const Protocols = {
       },    
 
       extractGPTText(turnNumber) {
+        // Name: extractGPTText
+        // Description: This function extracts the text content of a GPT response turn based on the turn number.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: Turn number of the GPT response
+        // Outputs: Text content of the GPT response turn
+        // Tags: DOM, Text Extraction, GPT, ChatGPT
+        // Subprotocols: None
+        // Location: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.extractGPTText
+
         const selector = `.w-full.text-token-text-primary[data-testid="conversation-turn-${turnNumber}"] p, 
                           .w-full.text-token-text-primary[data-testid="conversation-turn-${turnNumber}"] h3,
                           .w-full.text-token-text-primary[data-testid="conversation-turn-${turnNumber}"] code, 
@@ -82,6 +117,15 @@ const Protocols = {
       },
 
       async sendUserMessage(input_text) {
+        // Name: sendUserMessage
+        // Description: This function sends a user message to the ChatGPT interface.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: Text content of the user message to send
+        // Outputs: None
+        // Tags: DOM, User Message, ChatGPT
+        // Subprotocols: observeForElement, observeForElementGone
+        // Location: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage
+        
         try {
             // Wait for the #prompt-textarea container to load
             console.log("Sending message to ChatGPT:", input_text);
@@ -124,7 +168,7 @@ const Protocols = {
             for (let i = 0; i < 3; i++) {
               if (sendButton) {
                   sendButton.click();
-                  await Protocols.ChatGPT_Protocols.utilityProtocols.observeForElementGone('button[data-testid="stop-button"]', 1000);
+                  await Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElementGone('button[data-testid="stop-button"]', 1000);
                   console.log("Message sent to ChatGPT.");
               } else {
                   console.error("Send button not found.");
@@ -137,9 +181,18 @@ const Protocols = {
       },
 
       async observeGPTResponse() {
+        // Name: observeGPTResponse
+        // Description: This function observes the ChatGPT conversation for GPT responses and extracts the text content.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: None
+        // Outputs: Text content of the GPT response
+        // Tags: DOM, MutationObserver, GPT, ChatGPT
+        // Subprotocols: observeForElement, observeForElementGone, extractGPTText
+        // Location: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse
+
         console.log("Initializing observer for GPT responses");
     
-        const conversationContainer = await Protocols.ChatGPT_Protocols.utilityProtocols.observeForElement('div[role="presentation"]', 15000);
+        const conversationContainer = await Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElement('div[role="presentation"]', 15000);
     
         if (conversationContainer) {
           let lastTurnNumber = 0;
@@ -158,11 +211,11 @@ const Protocols = {
 
                               // Wait until the stop button disappears, indicating GPT has finished generating
                               try {
-                                  await Protocols.ChatGPT_Protocols.utilityProtocols.observeForElementGone('button[data-testid="stop-button"]', 60000);
+                                  await Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElementGone('button[data-testid="stop-button"]', 60000);
                                   console.log("GPT response generation complete.");
 
                                   // Extract GPT response text
-                                  const gptResponse = Protocols.ChatGPT_Protocols.utilityProtocols.extractGPTText(turnNumber);
+                                  const gptResponse = Tab_Protocols.ChatGPT_Protocols.utilityProtocols.extractGPTText(turnNumber);
 
                                   resolve(gptResponse); // Resolve with the response
                               } catch (error) {
@@ -186,10 +239,19 @@ const Protocols = {
       },
 
       async observeUserMessages() {
+        // Name: observeUserMessages
+        // Description: This function observes the ChatGPT conversation for user messages and extracts the text content.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: None
+        // Outputs: Text content of the user message
+        // Tags: DOM, MutationObserver, User Message, ChatGPT
+        // Subprotocols: observeForElement
+        // Location: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeUserMessages
+
         console.log("Initializing observer for user input text");
     
         // Wait for the conversation container to appear, using observerForElement
-        const conversationContainer = await Protocols.ChatGPT_Protocols.utilityProtocols.observeForElement('div[role="presentation"]', 15000);
+        const conversationContainer = await Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElement('div[role="presentation"]', 15000);
 
     
         // Check if the conversation container is found
@@ -233,19 +295,46 @@ const Protocols = {
 
     noiseProtocol: {
       handleStartNoise() {
+        // Name: handleStartNoise
+        // Description: This function handles the start noise event by clicking the vc-record-button to start recording.
+        // Prerequisites: ChatGPT conversation is active and Mia extension is installed
+        // Inputs: None
+        // Outputs: None
+        // Tags: Noise Detection, Audio Recording, ChatGPT
+        // Subprotocols: clickVcRecordButton
+        // Location: Tab_Protocols.ChatGPT_Protocols.noiseProtocol.handleStartNoise
+
           console.log("Start noise detected. Executing clickVcRecordButton...");
-          Protocols.ChatGPT_Protocols.utilityProtocols.Action.clickVcRecordButton();
+          Tab_Protocols.ChatGPT_Protocols.utilityProtocols.Action.clickVcRecordButton();
       },
       
       handleEndNoise() {
+        // Name: handleEndNoise
+        // Description: This function handles the end noise event by clicking the vc-record-button to stop recording.
+        // Prerequisites: ChatGPT conversation is active and Mia extension is installed
+        // Inputs: None
+        // Outputs: None
+        // Tags: Noise Detection, Audio Recording, ChatGPT
+        // Subprotocols: clickVcRecordButton
+        // Location: Tab_Protocols.ChatGPT_Protocols.noiseProtocol.handleEndNoise
+
           console.log("End noise detected. Executing appropriate action...");
-          Protocols.ChatGPT_Protocols.utilityProtocols.Action.clickVcRecordButton();
+          Tab_Protocols.ChatGPT_Protocols.utilityProtocols.Action.clickVcRecordButton();
       },
     },
 
     ConversationGPTProtocol: {
       async initialize() {
-        console.log("Initializing Conversation GPT Protocols...");
+        // Name: initialize
+        // Description: This function initializes the Conversation GPT protocol by providing the necessary instructions to the user.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: None
+        // Outputs: None
+        // Tags: ChatGPT, Initialization, Instructions
+        // Subprotocols: sendUserMessage, continuous_observerGPTResponse
+        // Location: Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.initialize
+
+        console.log("Initializing Conversation GPT Tab_Protocols...");
         const initialize_message = `
         You are Conversation GPT. Remember and use the strict response structure below:
 
@@ -265,16 +354,25 @@ const Protocols = {
         "**
         `;
 
-        await Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(initialize_message);
+        await Tab_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(initialize_message);
         this.continuous_observerGPTResponse();
       },
 
       async continuous_observerGPTResponse() {
+        // Name: continuous_observerGPTResponse
+        // Description: This function continuously observes the ChatGPT conversation for GPT responses and handles them accordingly.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: None
+        // Outputs: None
+        // Tags: ChatGPT, GPT Response, Observation
+        // Subprotocols: handleGPTResponse
+        // Location: Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.continuous_observerGPTResponse
+
         console.log("Starting continuous observation of GPT responses");
 
         while (true) {
           try {
-            const gptResponse = await Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse();
+            const gptResponse = await Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse();
             await this.handleGPTResponse(gptResponse);
 
           } catch (error) {
@@ -284,6 +382,15 @@ const Protocols = {
       },
 
       async handleGPTResponse(gptResponse) {
+        // Name: handleGPTResponse
+        // Description: This function handles the GPT response by detecting commands and sending them to the Problem Solver GPT.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: GPT response text
+        // Outputs: None
+        // Tags: ChatGPT, GPT Response, Command Detection
+        // Subprotocols: sendToProblemSolver
+        // Location: Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.handleGPTResponse
+
         if (gptResponse.includes("Is command: Yes") && gptResponse.includes("Further information needed: No")) {
           console.log("Detected command in GPT response:", gptResponse);
           const commandDetails = gptResponse.replace(/^Is command: (Yes|No)\s*/, "").replace(/^Further information needed: (Yes|No)\s*/, "");
@@ -295,6 +402,15 @@ const Protocols = {
       },
 
       sendToProblemSolver(commandText) {
+        // Name: sendToProblemSolver
+        // Description: This function sends the detected command text to the Problem Solver GPT for further analysis and execution.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: Command text extracted from the GPT response
+        // Outputs: None
+        // Tags: ChatGPT, Command Detection, Problem Solving
+        // Subprotocols: None
+        // Location: Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.sendToProblemSolver
+
         const message_to_send = {
             'action': "send_text_to_chat",
             'input': {'Input text': commandText },
@@ -310,26 +426,44 @@ const Protocols = {
 
     ProblemSolverGPTProtocol: {
       async initialize() {
-        console.log("Initializing Problem Solver GPT Protocols...");
+        // Name: initialize
+        // Description: This function initializes the Problem Solver GPT protocol by providing the necessary instructions to the user.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: None
+        // Outputs: None
+        // Tags: ChatGPT, Initialization, Instructions
+        // Subprotocols: sendUserMessage, continuous_observerGPTResponse
+        // Location: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.initialize
+
+        console.log("Initializing Problem Solver GPT Tab_Protocols...");
         const initialize_message =`
         You are Problem Solver GPT. Remember and use the strict response structure below:
 
         **"Analyze the following input and respond with the following structure:
 
-        Execution steps: Provide a step-by-step guide on how to execute the input using the available protocols.
+        Execution steps: Provide a step-by-step guide on how to execute the input using the available Tab_protocols.
         Expected output: Describe the expected output, result, or workflow of the execution.
         "**`;
 
-        await Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(initialize_message);
+        await Tab_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(initialize_message);
         this.continuous_observerGPTResponse();
       },
 
       async continuous_observerGPTResponse() {
+        // Name: continuous_observerGPTResponse
+        // Description: This function continuously observes the ChatGPT conversation for GPT responses and handles them accordingly.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: None
+        // Outputs: None
+        // Tags: ChatGPT, GPT Response, Observation
+        // Subprotocols: handleGPTResponse
+        // Location: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.continuous_observerGPTResponse
+
         console.log("Starting continuous observation of GPT responses");
 
         while (true) {
           try {
-            const gptResponse = await Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse();
+            const gptResponse = await Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse();
             await this.handleGPTResponse(gptResponse);
 
           } catch (error) {
@@ -339,10 +473,28 @@ const Protocols = {
       },
 
       async handleGPTResponse(gptResponse) {
+        // Name: handleGPTResponse
+        // Description: This function handles the GPT response by generating a protocol for execution.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: GPT response text
+        // Outputs: None
+        // Tags: ChatGPT, GPT Response, Protocol Generation
+        // Subprotocols: sendToProtocolGenerationGPT
+        // Location: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.handleGPTResponse
+
         this.sendToProtocolGenerationGPT(gptResponse);
       },
 
       sendToProtocolGenerationGPT(commandText) {
+        // Name: sendToProtocolGenerationGPT
+        // Description: This function sends the detected command text to the Protocol Generation GPT for generating a protocol.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: Command text extracted from the GPT response
+        // Outputs: None
+        // Tags: ChatGPT, Command Detection, Protocol Generation
+        // Subprotocols: None
+        // Location: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.sendToProtocolGenerationGPT
+
         const message_to_send = {
             'action': "send_text_to_chat",
             'input': {'Input text': commandText },
@@ -358,26 +510,44 @@ const Protocols = {
 
     ProtocolGenerationGPTProtocol: {
       async initialize() {
-        console.log("Initializing Protocol Generation GPT Protocols...");
+        // Name: initialize
+        // Description: This function initializes the Protocol Generation GPT protocol by providing the necessary instructions to the user.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: None
+        // Outputs: None
+        // Tags: ChatGPT, Initialization, Instructions
+        // Subprotocols:  sendUserMessage, continuous_observerGPTResponse
+        // Location: Tab_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.initialize
+
+        console.log("Initializing Protocol Generation GPT Tab_Protocols...");
         const initialize_message = `
         You are Protocol Generation GPT. Remember the response architecture you will be using from now on below:
 
         **"Analyze the following input and respond with the following structure:
 
-        Protocol steps: Provide a detailed step-by-step guide on how to execute the input using the available protocols.
+        Protocol steps: Provide a detailed step-by-step guide on how to execute the input using the available Tab_protocols.
         Protocol output: Describe the expected output, result, or workflow of the execution.
         "**`;
 
-        await Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(initialize_message);
+        await Tab_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(initialize_message);
         this.continuous_observerGPTResponse();
       },
 
       async continuous_observerGPTResponse() {
+        // Name: continuous_observerGPTResponse
+        // Description: This function continuously observes the ChatGPT conversation for GPT responses and handles them accordingly.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: None
+        // Outputs: None
+        // Tags: ChatGPT, GPT Response, Observation
+        // Subprotocols: handleGPTResponse
+        // Location: Tab_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.continuous_observerGPTResponse
+
         console.log("Starting continuous observation of GPT responses");
 
         while (true) {
           try {
-            const gptResponse = await Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse();
+            const gptResponse = await Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse();
             await this.handleGPTResponse(gptResponse);
 
           } catch (error) {
@@ -387,6 +557,15 @@ const Protocols = {
       },
 
       async handleGPTResponse(gptResponse) {
+        // Name: handleGPTResponse
+        // Description: This function handles the GPT response by generating a protocol for execution.
+        // Prerequisites: ChatGPT conversation is active
+        // Inputs: GPT response text
+        // Outputs: None
+        // Tags: ChatGPT, GPT Response, Protocol Generation
+        // Subprotocols: None
+        // Location: Tab_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.handleGPTResponse
+
         console.log("Detected response from Protocol Generation GPT:", gptResponse);
       },
     },
@@ -416,17 +595,17 @@ function handle_background_message(message) {
 
   if (message.receiver === "tab/Conversation GPT") {
     if (message.action === "initialize") {
-      Protocols.ChatGPT_Protocols.ConversationGPTProtocol.initialize();
+      Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.initialize();
     }
   }
 
   else if (message.receiver === "tab/Problem Solver GPT") {
     if (message.action === 'initialize') {
-      Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.initialize();
+      Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.initialize();
     }
     
     else if (message.action === "send_text_to_chat") {
-      let protocol_context = Protocols.GeneralProtocols.utilityProtocols.get_related_protocols();
+      let protocol_context = Tab_Protocols.GeneralProtocols.utilityProtocols.get_related_protocols();
 
       let input_text = 
       `
@@ -436,37 +615,37 @@ function handle_background_message(message) {
       '${protocol_context}'
       `;
 
-      Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(input_text);
+      Tab_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(input_text);
     }
   }
 
   else if (message.receiver === "tab/Protocol Generation GPT") {
     if (message.action === 'initialize') {
-      Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.initialize();
+      Tab_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.initialize();
     }
     else if (message.action === "send_text_to_chat") {
       let input_text = `
       '${message.input["Input text"]}'`;
 
-      Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(input_text);
+      Tab_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(input_text);
     }
   }
 
   else {
     if (message.action === "clickVcRecordButton") {
-      Protocols.ChatGPT_Protocols.utilityProtocols.clickVcRecordButton();
+      Tab_Protocols.ChatGPT_Protocols.utilityProtocols.clickVcRecordButton();
     } 
     else if (message.action === "extractSectionText") {
-      Protocols.ChatGPT_Protocols.utilityProtocols.extractSectionText(message.input['conversationNumber']);
+      Tab_Protocols.ChatGPT_Protocols.utilityProtocols.extractSectionText(message.input['conversationNumber']);
     } 
     else if (message.action === "extractFlexText") {
-      Protocols.ChatGPT_Protocols.utilityProtocols.extractFlexText();
+      Tab_Protocols.ChatGPT_Protocols.utilityProtocols.extractFlexText();
     } 
     else if (message.action === "start_noise") {
-      Protocols.ChatGPT_Protocols.noiseProtocol.handleStartNoise();
+      Tab_Protocols.ChatGPT_Protocols.noiseProtocol.handleStartNoise();
     } 
     else if (message.action === "end_noise") {
-      Protocols.ChatGPT_Protocols.noiseProtocol.handleEndNoise();
+      Tab_Protocols.ChatGPT_Protocols.noiseProtocol.handleEndNoise();
     }
   }
   return true

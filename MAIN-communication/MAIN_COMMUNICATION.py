@@ -6,7 +6,7 @@ import zmq
 import json
 import ast
 
-LOCAL_FOLDER = "/Users/killercookie/Jarvis/"
+LOCAL_FOLDER = "/Users/killercookie/Jarvis-on-Github/"
 PYTHON_INTERPRETER = "/usr/local/bin/python3"
 
 IDENTITY_PATH = os.path.abspath(__file__)

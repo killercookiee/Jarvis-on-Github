@@ -24,7 +24,7 @@ import threading
 import json
 
 # Paths for communication and log files
-LOCAL_FOLDER = "/Users/killercookie/Jarvis/"
+LOCAL_FOLDER = "/Users/killercookie/Jarvis-on-Github/"
 
 IDENTITY_PATH = os.path.abspath(__file__)
 LOG_FILE_PATH = os.path.join(os.path.dirname(IDENTITY_PATH), os.path.basename(IDENTITY_PATH).replace("_", "").replace(".py", ".log"))

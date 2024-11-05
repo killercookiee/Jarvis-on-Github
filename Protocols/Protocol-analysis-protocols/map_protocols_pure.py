@@ -83,3 +83,4 @@ def parse_js_protocol_comment(comment):
         protocol_data[key.strip()] = content[0].strip() if content else ""
     
     return protocol_data
+
