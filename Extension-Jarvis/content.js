@@ -8,7 +8,7 @@ const Tab_Protocols = {
         // Description: This function observes the DOM for the presence of an element matching the given selector.
         // Prerequisites: None
         // Inputs: Name of the element selector to observe, timeout duration in milliseconds (default: 15000ms)
-        // Outputs: foundElement (Element): The found element matching the selector
+        // Outputs: foundElement (Element) - The found element matching the selector
         // Tags: DOM, MutationObserver, Promise, Timeout, element, selector
         // Subprotocols: None
         // Location: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElement
