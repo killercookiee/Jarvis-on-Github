@@ -237,6 +237,10 @@ def activate_subprocess(script_name, index=0):
     # Start the setup pipe in a separate thread
     threading.Thread(target=setup_pipe).start()
 
+    # Wait for the pipe to be ready
+    pipe_ready_event.wait()
+    time.sleep(0.1)  # Wait for the subprocess to start
+
 def deactivate_subprocess(script_name):
     global subprocesses, subprocess_events
 
@@ -311,8 +315,21 @@ def handle_message(message):
         elif message['action'] == "stop_sound_activation":
             deactivate_subprocess(subprocess_paths['SOUND_ACTIVATION_SUBPROCESS'])
 
+    # Handles message to map protocols subprocess
+    if message.get('receiver') == subprocess_paths['MAP_PROTOCOLS_SUBPROCESS']:
+        if message['action'] == "start":
+            log(f"{message.get('sender')} requested to start MAP_PROTOCOLS_SUBPROCESS")
+            activate_subprocess(subprocess_paths['MAP_PROTOCOLS_SUBPROCESS'])
+            send_message_subprocess(message="'action': 'start", receiver=subprocess_paths['MAP_PROTOCOLS_SUBPROCESS'])
+        elif message['action'] == "stop":
+            log(f"{message.get('sender')} requested to stop MAP_PROTOCOLS_SUBPROCESS")
+            write_computer_comms(message)
+            deactivate_subprocess(subprocess_paths['MAP_PROTOCOLS_SUBPROCESS'])
+        else:
+            log(f"Unrecognized action: {message['action']}")
 
-### SUBPROCESS MODIFICATION BELOW
+
+### SUBPROCESS MODIFICATION ABOVE
 
 
 
@@ -330,9 +347,7 @@ if __name__ == "__main__":
 
 
         # Other processes that starts upon startup:
-        log("starting MAP_PROTOCOLS_SUBPROCESS")
-        activate_subprocess(subprocess_paths['MAP_PROTOCOLS_SUBPROCESS'])
-        time.sleep(5)
+        activate_subprocess(subprocess_paths['SOUND_ACTIVATION_SUBPROCESS'])
         send_message_subprocess(message="'action': 'start", receiver=subprocess_paths['SOUND_ACTIVATION_SUBPROCESS'])
 
         # Keep MAIN_COMMUNICATION running

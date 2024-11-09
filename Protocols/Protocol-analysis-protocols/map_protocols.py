@@ -21,8 +21,10 @@ import zmq
 import threading
 import json
 
-import inspect
+import ast
 import re
+from collections import defaultdict
+
 
 # Paths for communication and log files
 IDENTITY_PATH = os.path.abspath(__file__)
@@ -89,7 +91,7 @@ def handle_main_message(message):
     if message['action'] == "start":
         log("Message for main process to start")
         stop_event.clear()  # Reset the stop event
-        main_thread = threading.Thread(target=main)
+        main_thread = threading.Thread(target=main, daemon=True)
         main_thread.start()
 
     elif message.get('action') == "stop":
@@ -98,101 +100,97 @@ def handle_main_message(message):
     return
  
 def main():
-    try:
-        while not stop_event.is_set():
-            map_protocols()
-            time.sleep(10)  # To reduce CPU usage
+    def map_protocols():
+        protocol_map = defaultdict(lambda: defaultdict(dict))
+        log("Mapping protocols")
 
-    except Exception as e:
-        log(f"Error in template: {e}")
-        log(traceback.format_exc())
+        # 1. Map Python Protocols
+        python_dir = './Protocols'
+        for root, _, files in os.walk(python_dir):
+            for file in files:
+                if file.endswith(".py"):
+                    filepath = os.path.join(root, file)
+                    with open(filepath, 'r') as f:
+                        docstring = ast.get_docstring(ast.parse(f.read()))
+                        if docstring:
+                            protocol_info = parse_protocol_docstring(docstring)
+                            add_to_map(protocol_map, protocol_info, separator='/')
 
-    finally:
-        log("Template Protocol stopped")
+        # 2. Map Background.js Protocols
+        background_file = './Extension-Jarvis/background.js'
+        protocol_map.update(map_js_protocols(background_file, 'Background_Protocols', separator='.'))
 
+        # 3. Map Content.js Protocols
+        content_file = './Extension-Jarvis/content.js'
+        protocol_map.update(map_js_protocols(content_file, 'Tab_Protocols', separator='.'))
 
+        # Save the protocol map as JSON
+        output_path = './protocol_map.json'
+        with open(output_path, 'w') as f:
+            json.dump(protocol_map, f, indent=2)
+        log(f"Protocol map saved to {output_path}")
 
-def map_protocols():
-    protocol_map = {}
+    def parse_protocol_docstring(docstring):
+        """Extract protocol details from a docstring with specified format."""
+        fields = ["Name", "Description", "Prerequisites", "Inputs", "Outputs", "Tags", "Subprotocols", "Location"]
+        protocol_info = {field: "" for field in fields}
+        for line in docstring.splitlines():
+            for field in fields:
+                if line.startswith(f"{field}:"):
+                    protocol_info[field] = line.split(f"{field}:")[1].strip()
+        return protocol_info
 
-    # 1. Map Python protocols
-    python_protocol_dir = "/Users/killercookie/Jarvis/Protocols"
-    for filename in os.listdir(python_protocol_dir):
-        if filename.endswith(".py"):
-            file_path = os.path.join(python_protocol_dir, filename)
-            with open(file_path, 'r') as f:
-                content = f.read()
-                
-            # Extract docstring
-            docstring = inspect.getdoc(content)
-            protocol_data = parse_protocol_docstring(docstring)
-            protocol_map[filename] = protocol_data
-    
-    # 2. Map JavaScript protocols in `background.js`
-    protocol_map.update(map_js_protocols("background.js", "const Protocols"))
+    def map_js_protocols(filepath, protocol_const, separator='.'):
+        """Parse protocols from JavaScript files using specified constants and location separator."""
+        js_protocols = defaultdict(dict)
+        with open(filepath, 'r') as f:
+            content = f.read()
 
-    # 3. Map JavaScript protocols in `content.js`
-    protocol_map.update(map_js_protocols("content.js", "const Protocols"))
+            # Pattern to find protocol functions within the specified constant's section
+            pattern = re.compile(
+                rf"{protocol_const}\s*=\s*{{(.*?)}};",
+                re.DOTALL
+            )
+            match = pattern.search(content)
+            if match:
+                protocols_block = match.group(1)
 
-    # Save to JSON file for easy access
-    with open('protocol_mapping.json', 'w') as f:
-        json.dump(protocol_map, f, indent=4)
-    
-    print("Protocol mapping completed and saved to protocol_mapping.json.")
+                # Extract individual functions with inline comments
+                func_pattern = re.compile(
+                    r"async\s+(\w+)\s*\((.*?)\)\s*{\s*//\s*Name:\s*(.*?)\s*//\s*Description:\s*(.*?)\s*"
+                    r"//\s*Prerequisites:\s*(.*?)\s*//\s*Inputs:\s*(.*?)\s*//\s*Outputs:\s*(.*?)\s*"
+                    r"//\s*Tags:\s*(.*?)\s*//\s*Subprotocols:\s*(.*?)\s*//\s*Location:\s*(.*?)\n",
+                    re.DOTALL
+                )
 
-def parse_protocol_docstring(docstring):
-    # Assuming the docstring has specific headers like "Description:", "Prerequisites:", etc.
-    protocol_data = {
-        "Description": "",
-        "Prerequisites": "",
-        "Input": "",
-        "Output": "",
-        "Tags": [],
-        "Subprotocols": [],
-        "Location": ""
-    }
-    
-    # Parse based on expected sections
-    sections = re.split(r'\n\s*(?=\w+:)', docstring)
-    for section in sections:
-        key, *content = section.split(":", 1)
-        protocol_data[key.strip()] = content[0].strip() if content else ""
-    
-    return protocol_data
+                for func_match in func_pattern.finditer(protocols_block):
+                    protocol_info = {
+                        "Name": func_match.group(3).strip(),
+                        "Description": func_match.group(4).strip(),
+                        "Prerequisites": func_match.group(5).strip(),
+                        "Inputs": func_match.group(6).strip(),
+                        "Outputs": func_match.group(7).strip(),
+                        "Tags": func_match.group(8).strip(),
+                        "Subprotocols": func_match.group(9).strip(),
+                        "Location": func_match.group(10).strip()
+                    }
+                    add_to_map(js_protocols, protocol_info, separator)
 
-def map_js_protocols(js_file, protocols_var):
-    protocol_data = {}
-    with open(js_file, 'r') as f:
-        content = f.read()
+        return js_protocols
 
-    # Regex pattern to match each function and its preceding comment
-    pattern = r"\/\*\*(.*?)\*\/\s*function\s+(\w+)\s*\("
-    matches = re.findall(pattern, content, re.DOTALL)
-    
-    for comment, function_name in matches:
-        protocol_data[function_name] = parse_js_protocol_comment(comment)
-    
-    return protocol_data
+    def add_to_map(map_structure, protocol_info, separator='/'):
+        """Insert protocol_info into map_structure based on its hierarchical Location."""
+        location_keys = protocol_info["Location"].split(separator)
+        current_level = map_structure
+        for key in location_keys[:-1]:
+            if key not in current_level:
+                current_level[key] = {}
+            current_level = current_level[key]
+        current_level[location_keys[-1]] = protocol_info
 
-def parse_js_protocol_comment(comment):
-    # Process comment block to extract structured information
-    protocol_data = {
-        "Description": "",
-        "Prerequisites": "",
-        "Input": "",
-        "Output": "",
-        "Tags": [],
-        "Subprotocols": []
-    }
-    
-    # Parse key-value pairs based on comment format
-    sections = re.split(r'\n\s*(?=\w+:)', comment)
-    for section in sections:
-        key, *content = section.split(":", 1)
-        protocol_data[key.strip()] = content[0].strip() if content else ""
-    
-    return protocol_data
+    map_protocols()
 
+        
 
 ### PROTOCOL MODIFICATION ABOVE
 

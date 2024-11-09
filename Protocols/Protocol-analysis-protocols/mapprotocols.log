@@ -1,0 +1,6 @@
+2024-11-09 05:22:18 - Template Protocol started
+2024-11-09 05:22:18 - Received message from main: {'action': 'start', 'input': {}, 'sender': '/Users/killercookie/Jarvis-on-Github/MAIN-communication/MAIN_COMMUNICATION.py', 'receiver': '/Users/killercookie/Jarvis-on-Github/Protocols/Protocol-analysis-protocols/map_protocols.py'}
+2024-11-09 05:22:18 - Handling message from main: {'action': 'start', 'input': {}, 'sender': '/Users/killercookie/Jarvis-on-Github/MAIN-communication/MAIN_COMMUNICATION.py', 'receiver': '/Users/killercookie/Jarvis-on-Github/Protocols/Protocol-analysis-protocols/map_protocols.py'}
+2024-11-09 05:22:18 - Message for main process to start
+2024-11-09 05:22:18 - Mapping protocols
+2024-11-09 05:22:18 - Protocol map saved to ./protocol_map.json

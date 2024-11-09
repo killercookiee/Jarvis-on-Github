@@ -1,0 +1,152 @@
+{
+  "Protocols": {
+    "Protocol-analysis-protocols": {
+      "map_protocols.py": {
+        "Name": "map_protocols.py",
+        "Description": "This creates the map file of all protocols in the system.",
+        "Prerequisites": "None",
+        "Inputs": "None",
+        "Outputs": "protocol_mapping.json",
+        "Tags": "protocol, mapping, json",
+        "Subprotocols": "None",
+        "Location": "Protocols/Protocol-analysis-protocols/map_protocols.py"
+      }
+    },
+    "Other-protocols": {
+      "template_protocol.py": {
+        "Name": "template_protocol.py",
+        "Description": "This is the template protocol",
+        "Prerequisites": "None",
+        "Inputs": "None",
+        "Outputs": "None",
+        "Tags": "template",
+        "Subprotocols": "None",
+        "Location": "Protocols/Other-protocols/template_protocol.py"
+      }
+    },
+    "Audio-protocols": {
+      "sound_activation.py": {
+        "Name": "sound_activation.py",
+        "Description": "This is the protocol to detect when a voice has been made then sends a message to the Google extension to press the mia voice button on the chatgpt tab",
+        "Prerequisites": "Conversation GPT opened",
+        "Inputs": "Sound from the microphone",
+        "Outputs": "start_noise, end_noise to Conversation GPT",
+        "Tags": "audio, voice, mia, chatgpt, google extension",
+        "Subprotocols": "None",
+        "Location": "Protocols/Audio-protocols/sound_activation.py"
+      }
+    }
+  },
+  "Background_Protocols": {
+    "CommunicationProtocols": {
+      "communicateWithMainHost": {
+        "Name": "communicateWithMainHost",
+        "Description": "This function is used to communicate with the main native host",
+        "Prerequisites": "The main native host must be setup",
+        "Inputs": "initialMessage (object) - The initial message to send to the main native host",
+        "Outputs": "None",
+        "Tags": "Communication, Native Messaging",
+        "Subprotocols": "Background_Protocols.CommunicationProtocols.sendMainHostMessage, Background_Protocols.CommunicationProtocols.handleMainHost",
+        "Location": "Background_Protocols.CommunicationProtocols.communicateWithMainHost"
+      }
+    }
+  },
+  "Tab_Protocols": {
+    "ChatGPT_Protocols": {
+      "utilityProtocols": {
+        "observeForElement": {
+          "Name": "observeForElement",
+          "Description": "This function observes the DOM for the presence of an element matching the given selector.",
+          "Prerequisites": "None",
+          "Inputs": "Name of the element selector to observe, timeout duration in milliseconds (default: 15000ms)",
+          "Outputs": "foundElement (Element) - The found element matching the selector",
+          "Tags": "DOM, MutationObserver, Promise, Timeout, element, selector",
+          "Subprotocols": "None",
+          "Location": "Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElement"
+        },
+        "clickVcRecordButton": {
+          "Name": "clickVcRecordButton",
+          "Description": "This function clicks the \"vc-record-button\" element in the DOM to start or stop recording audio.",
+          "Prerequisites": "ChatGPT conversation is active and Mia extension is installed",
+          "Inputs": "None",
+          "Outputs": "None",
+          "Tags": "DOM, Button, Click, Audio Recording, ChatGPT",
+          "Subprotocols": "Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElement",
+          "Location": "Tab_Protocols.ChatGPT_Protocols.utilityProtocols.clickVcRecordButton"
+        },
+        "observeForElementGone": {
+          "Name": "observeForElementGone",
+          "Description": "This function observes the DOM for the disappearance of an element matching the given selector.",
+          "Prerequisites": "None",
+          "Inputs": "Name of the element selector to observe, timeout duration in milliseconds (default: 60000ms)",
+          "Outputs": "None",
+          "Tags": "DOM, MutationObserver, Promise, Timeout, element, selector",
+          "Subprotocols": "None",
+          "Location": "Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElementGone"
+        },
+        "sendUserMessage": {
+          "Name": "sendUserMessage",
+          "Description": "This function sends a user message to the ChatGPT interface.",
+          "Prerequisites": "ChatGPT conversation is active",
+          "Inputs": "Text content of the user message to send",
+          "Outputs": "None",
+          "Tags": "DOM, User Message, ChatGPT",
+          "Subprotocols": "Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElement, Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElementGone",
+          "Location": "Tab_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage"
+        },
+        "observeGPTResponse": {
+          "Name": "observeGPTResponse",
+          "Description": "This function observes the ChatGPT conversation for GPT responses and extracts the text content.",
+          "Prerequisites": "ChatGPT conversation is active",
+          "Inputs": "None",
+          "Outputs": "Text content of the GPT response",
+          "Tags": "DOM, MutationObserver, GPT, ChatGPT",
+          "Subprotocols": "Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElement, Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElementGone, Tab_Protocols.ChatGPT_Protocols.utilityProtocols.extractGPTText",
+          "Location": "Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse"
+        },
+        "observeUserMessages": {
+          "Name": "observeUserMessages",
+          "Description": "This function observes the ChatGPT conversation for user messages and extracts the text content.",
+          "Prerequisites": "ChatGPT conversation is active",
+          "Inputs": "None",
+          "Outputs": "Text content of the user message",
+          "Tags": "DOM, MutationObserver, User Message, ChatGPT",
+          "Subprotocols": "Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElement",
+          "Location": "Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeUserMessages"
+        }
+      },
+      "ConversationGPTProtocol": {
+        "initialize": {
+          "Name": "initialize",
+          "Description": "This function initializes the Conversation GPT protocol by providing the necessary instructions to the user.",
+          "Prerequisites": "ChatGPT conversation is active",
+          "Inputs": "None",
+          "Outputs": "None",
+          "Tags": "ChatGPT, Initialization, Instructions",
+          "Subprotocols": "Tab_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage, Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.continuous_observerGPTResponse",
+          "Location": "Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.initialize"
+        },
+        "continuous_observerGPTResponse": {
+          "Name": "continuous_observerGPTResponse",
+          "Description": "This function continuously observes the ChatGPT conversation for GPT responses and handles them accordingly.",
+          "Prerequisites": "ChatGPT conversation is active",
+          "Inputs": "None",
+          "Outputs": "None",
+          "Tags": "ChatGPT, GPT Response, Observation",
+          "Subprotocols": "Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.handleGPTResponse",
+          "Location": "Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.continuous_observerGPTResponse"
+        },
+        "handleGPTResponse": {
+          "Name": "handleGPTResponse",
+          "Description": "This function handles the GPT response by detecting commands and sending them to the Problem Solver GPT.",
+          "Prerequisites": "ChatGPT conversation is active",
+          "Inputs": "GPT response text",
+          "Outputs": "None",
+          "Tags": "ChatGPT, GPT Response, Command Detection",
+          "Subprotocols": "Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.sendToProblemSolver",
+          "Location": "Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.handleGPTResponse"
+        }
+      }
+    }
+  }
+}

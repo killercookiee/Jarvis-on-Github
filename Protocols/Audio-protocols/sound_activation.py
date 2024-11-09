@@ -7,10 +7,6 @@ Outputs: start_noise, end_noise to Conversation GPT
 Tags: audio, voice, mia, chatgpt, google extension
 Subprotocols: None
 Location: Protocols/Audio-protocols/sound_activation.py
-
-
-Author: Nguyen Ba Phi
-Date: 2024-10-24
 """
 
 

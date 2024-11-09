@@ -2,8 +2,12 @@
 Name: template_protocol.py
 Description: This is the template protocol
 Tags: template
+Prerequisites: None
+Inputs: None
+Outputs: None
+Subprotocols: None
+Location: Protocols/Other-protocols/template_protocol.py
 """
-
 
 import time
 import os
@@ -21,7 +25,7 @@ if not os.path.exists(LOG_FILE_PATH):
         pass
 
 
-MAIN_PATH = "/Users/killercookie/Jarvis-on-Github/MAIN-communication/MAIN_COMMUNICATION.py"
+MAIN_PATH = "./MAIN-communication/MAIN_COMMUNICATION.py"
 
 
 context = zmq.Context()
@@ -77,7 +81,7 @@ def handle_main_message(message):
     if message['action'] == "start":
         log("Message for main process to start")
         stop_event.clear()  # Reset the stop event
-        main_thread = threading.Thread(target=main)
+        main_thread = threading.Thread(target=main, daemon=True)
         main_thread.start()
 
     elif message.get('action') == "stop":

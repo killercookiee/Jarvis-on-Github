@@ -17,8 +17,8 @@ const Background_Protocols = {
       // Inputs: initialMessage (object) - The initial message to send to the main native host
       // Outputs: None
       // Tags: Communication, Native Messaging
-      // Subprotocols: sendMainHostMessage, handleMainHost
-      // Location: Background_Protocols/CommunicationProtocols.js
+      // Subprotocols: Background_Protocols.CommunicationProtocols.sendMainHostMessage, Background_Protocols.CommunicationProtocols.handleMainHost
+      // Location: Background_Protocols.CommunicationProtocols.communicateWithMainHost
 
       let continueCommunication = true;
       let lastMessageWasOverride = false; // Track if the last message was an override
@@ -73,8 +73,8 @@ const Background_Protocols = {
       // Inputs: altMessage (object) - The custom message to send to the main native host
       // Outputs: Promise - Resolves when the override message is processed
       // Tags: Communication, Native Messaging
-      // Subprotocols: sendMainHostMessage
-      // Location: Background_Protocols/CommunicationProtocols.js
+      // Subprotocols: Background_Protocols.CommunicationProtocols.sendMainHostMessage
+      // Location: Background_Protocols.CommunicationProtocols.sendnextMainHostNMessage
 
       console.log('Setting override message:', altMessage);
       overrideMessage = altMessage;
@@ -94,7 +94,7 @@ const Background_Protocols = {
       // Outputs: Promise - Resolves with the response from the main native host
       // Tags: Communication, Native Messaging
       // Subprotocols: None
-      // Location: Background_Protocols/CommunicationProtocols.js
+      // Location: Background_Protocols.CommunicationProtocols.sendMainHostMessage
 
       return new Promise((resolve, reject) => {
           chrome.runtime.sendNativeMessage('com.jarvis.mainnativehost', message, (response) => {
@@ -116,8 +116,8 @@ const Background_Protocols = {
       // Inputs: message (object) - The message to send to the tab
       // Outputs: Promise - Resolves with the response from the tab
       // Tags: Communication, Tabs
-      // Subprotocols: handleTabMessages
-      // Location: Background_Protocols/CommunicationProtocols.js
+      // Subprotocols: Background_Protocols.CommunicationProtocols.handleTabMessages
+      // Location: Background_Protocols.CommunicationProtocols.sendMessageToSpecificTab
 
       console.log(`specificTabIds: ${specificTabIds}`)
       let tabId = specificTabIds[message.receiver]
@@ -145,7 +145,7 @@ const Background_Protocols = {
       // Outputs: Promise - Resolves with the tab ID of the new tab
       // Tags: Tabs, Communication
       // Subprotocols: None
-      // Location: Background_Protocols/GeneralProtocols.js
+      // Location: Background_Protocols.GeneralProtocols.openNewTab
 
       return new Promise((resolve, reject) => {
         chrome.tabs.create({ url: new_tab_url }, (tab) => {
