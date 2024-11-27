@@ -16,13 +16,11 @@ Date: 2024-11-4
 
 import time
 import os
-import traceback
 import zmq
 import threading
 import json
 
 import ast
-import re
 from collections import defaultdict
 
 
@@ -33,10 +31,6 @@ LOG_FILE_PATH = os.path.join(os.path.dirname(IDENTITY_PATH), os.path.basename(ID
 if not os.path.exists(LOG_FILE_PATH):
     with open(LOG_FILE_PATH, 'a') as log_file:
         pass
-
-
-MAIN_PATH = "/Users/killercookie/Jarvis-on-Github/MAIN-communication/MAIN_COMMUNICATION.py"
-
 
 context = zmq.Context()
 pipe = context.socket(zmq.PAIR)
@@ -64,14 +58,8 @@ def handle_main_communication(pipe):
             log(f"Error in communication with main: {e}")
             break
 
-def send_main_message(message, input_data={}, sender=IDENTITY_PATH, receiver=MAIN_PATH):
-    json_message = {
-        'action': message.split(":")[1].strip().replace("'", ""),
-        'input': input_data,
-        'sender': sender,
-        'receiver': receiver
-    }
-    json_message = json.dumps(json_message)
+def send_main_message(message):
+    json_message = json.dumps(message)
         
     # Ensure the pipe is open and ready before sending
     if pipe:
@@ -79,6 +67,15 @@ def send_main_message(message, input_data={}, sender=IDENTITY_PATH, receiver=MAI
         log(f"Message sent to MAIN_COMMUNICATION: {str(json_message)}")
     else:
         log("Pipe is not open, message not sent.")
+
+def send_quit_message():
+    quit_message = {
+        "action": "stop",
+        "input": None,
+        "sender": IDENTITY_PATH,
+        "receiver": IDENTITY_PATH,
+    }
+    send_main_message(quit_message)
 
 
 
@@ -127,8 +124,15 @@ def main():
         # Save the protocol map as JSON
         output_path = './protocol_map.json'
         with open(output_path, 'w') as f:
+            f.write("")
             json.dump(protocol_map, f, indent=2)
         log(f"Protocol map saved to {output_path}")
+
+        output_path_2 = './Extension-Jarvis/assets/protocol_map.json'
+        with open(output_path_2, 'w') as f:
+            f.write("")
+            json.dump(protocol_map, f, indent=2)
+        log(f"Protocol map saved to {output_path_2}")
 
     def parse_protocol_docstring(docstring):
         """Extract protocol details from a docstring with specified format."""
@@ -141,54 +145,51 @@ def main():
         return protocol_info
 
     def map_js_protocols(filepath, protocol_const, separator='.'):
-        """Parse protocols from JavaScript files using specified constants and location separator."""
-        js_protocols = defaultdict(dict)
+        """Extract protocols by locating '// Location:' and processing preceding lines."""
+        js_protocols = {}
+        log(f"Opening file: {filepath}")
+
         with open(filepath, 'r') as f:
-            content = f.read()
+            lines = f.readlines()
 
-            # Pattern to find protocol functions within the specified constant's section
-            pattern = re.compile(
-                rf"{protocol_const}\s*=\s*{{(.*?)}};",
-                re.DOTALL
-            )
-            match = pattern.search(content)
-            if match:
-                protocols_block = match.group(1)
+        for i, line in enumerate(lines):
+            if "// Location:" in line:
+                # Extract the 7 lines above
+                preceding_lines = lines[max(0, i - 7):i]
+                preceding_lines = [l.strip() for l in preceding_lines]  # Remove leading/trailing spaces
 
-                # Extract individual functions with inline comments
-                func_pattern = re.compile(
-                    r"async\s+(\w+)\s*\((.*?)\)\s*{\s*//\s*Name:\s*(.*?)\s*//\s*Description:\s*(.*?)\s*"
-                    r"//\s*Prerequisites:\s*(.*?)\s*//\s*Inputs:\s*(.*?)\s*//\s*Outputs:\s*(.*?)\s*"
-                    r"//\s*Tags:\s*(.*?)\s*//\s*Subprotocols:\s*(.*?)\s*//\s*Location:\s*(.*?)\n",
-                    re.DOTALL
-                )
-
-                for func_match in func_pattern.finditer(protocols_block):
+                # Ensure the format matches
+                expected_fields = ["// Name:", "// Description:", "// Prerequisites:", "// Inputs:", "// Outputs:", "// Tags:", "// Subprotocols:"]
+                if all(field in " ".join(preceding_lines) for field in expected_fields):
+                    # Extract field values
                     protocol_info = {
-                        "Name": func_match.group(3).strip(),
-                        "Description": func_match.group(4).strip(),
-                        "Prerequisites": func_match.group(5).strip(),
-                        "Inputs": func_match.group(6).strip(),
-                        "Outputs": func_match.group(7).strip(),
-                        "Tags": func_match.group(8).strip(),
-                        "Subprotocols": func_match.group(9).strip(),
-                        "Location": func_match.group(10).strip()
+                        field.split(":")[0][3:]: next((l.split(":", 1)[-1].strip() for l in preceding_lines if l.startswith(field)), "")
+                        for field in expected_fields
                     }
-                    add_to_map(js_protocols, protocol_info, separator)
+                    # Add Location
+                    protocol_info["Location"] = line.split(":", 1)[-1].strip()
 
+                    # Map by location
+                    add_to_map(js_protocols, protocol_info, separator)
+                    log(f"Extracted protocol: {protocol_info['Location']}")
+
+        log(f"Completed mapping for {protocol_const}")
         return js_protocols
 
-    def add_to_map(map_structure, protocol_info, separator='/'):
-        """Insert protocol_info into map_structure based on its hierarchical Location."""
-        location_keys = protocol_info["Location"].split(separator)
-        current_level = map_structure
-        for key in location_keys[:-1]:
-            if key not in current_level:
-                current_level[key] = {}
-            current_level = current_level[key]
-        current_level[location_keys[-1]] = protocol_info
+    def add_to_map(js_protocols, protocol_info, separator):
+        """Helper function to add protocol info to the mapping."""
+        location_parts = protocol_info["Location"].split(separator)
+        current_level = js_protocols
+        for part in location_parts[:-1]:
+            if part not in current_level:
+                current_level[part] = {}
+            current_level = current_level[part]
+        current_level[location_parts[-1]] = protocol_info
+        log(f"Added protocol to map: {protocol_info['Location']}")
+
 
     map_protocols()
+    send_quit_message()
 
         
 

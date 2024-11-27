@@ -11,10 +11,10 @@ Location: Protocols/Other-protocols/template_protocol.py
 
 import time
 import os
-import traceback
 import zmq
 import threading
 import json
+
 
 # Paths for communication and log files
 IDENTITY_PATH = os.path.abspath(__file__)
@@ -24,25 +24,20 @@ if not os.path.exists(LOG_FILE_PATH):
     with open(LOG_FILE_PATH, 'a') as log_file:
         pass
 
+pipe = None
+active_requests = {}
+active_subprotocols = {}
+request_responses = {}
+main_protocol = ""
+main_protocol_requestID = ""
 
-MAIN_PATH = "./MAIN-communication/MAIN_COMMUNICATION.py"
+def set_up_communication():
+    """This function sets up the communication with the main process."""
+    global pipe
 
-
-context = zmq.Context()
-pipe = context.socket(zmq.PAIR)
-pipe.connect(f"ipc://{IDENTITY_PATH}.ipc")
-
-stop_event = threading.Event()
-
-def log(message, file_path=LOG_FILE_PATH):
-    with open(file_path, "a") as log_file:
-        log_file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
-
-def clear_log(file_path):
-    with open(file_path, "w") as log_file:
-        log_file.write("")  # Clear the file content
-
-def handle_main_communication(pipe):
+    context = zmq.Context()
+    pipe = context.socket(zmq.PAIR)
+    pipe.connect(f"ipc://{IDENTITY_PATH}.ipc")
     while True:
         try:
             message_str = pipe.recv_string().replace("'", '"')
@@ -54,53 +49,125 @@ def handle_main_communication(pipe):
             log(f"Error in communication with main: {e}")
             break
 
-def send_main_message(message, input_data={}, sender=IDENTITY_PATH, receiver=MAIN_PATH):
-    json_message = {
-        'action': message.split(":")[1].strip().replace("'", ""),
-        'input': input_data,
-        'sender': sender,
-        'receiver': receiver
-    }
-    json_message = json.dumps(json_message)
-        
-    # Ensure the pipe is open and ready before sending
+def log(message, file_path=LOG_FILE_PATH):
+    """This function logs messages to a log file."""
+    with open(file_path, "a") as log_file:
+        log_file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
+
+def clear_log(file_path):
+    """This function clears the content of a log file."""
+    with open(file_path, "w") as log_file:
+        log_file.write("")  # Clear the file content
+
+def send_main_message(message):
+    """This function sends a message to the main process."""
+    json_message = json.dumps(message)
     if pipe:
         pipe.send_string(str(json_message))
         log(f"Message sent to MAIN_COMMUNICATION: {str(json_message)}")
     else:
         log("Pipe is not open, message not sent.")
 
+def send_quit_message():
+    """This function sends a quit message to the main process."""
+    quit_message = {
+        "action": "deactivate_subprocess",
+        "input": {'script_path': IDENTITY_PATH},
+        "sender": IDENTITY_PATH,
+        "receiver": "MAIN-communication/MAIN_COMMUNICATION.py",
+    }
+    send_main_message(quit_message)
+
+def activate_subprotocol(subprotocol_path, input):
+    """
+    This function sends a request message to the other protocols, waiting for a response.
+    
+    Args:
+        subprotocol_path (str): The path of the subprotocol to activate.
+        input (dict): The input for the subprotocol.
+    """
+    message = {
+        "request": "start",
+        "input": input,
+        "sender": IDENTITY_PATH,
+        "receiver": subprotocol_path,
+        "requestID": IDENTITY_PATH + f"_{int(time.time())}",
+    }
+    
+    global active_requests
+    send_main_message(message)
+    active_requests[message.get('requestID')] = message
+
+    # Wait for response
+    while message.get('requestID') in active_requests:
+        time.sleep(1)
+    request_response = request_responses[message.get('requestID')]
+    request_responses.pop(message.get('requestID'))
+    return request_response
+
+def send_ouput(output):
+    """Send the output to the main protocol that activated this protocol.
+    
+    Args:
+        output (dict): The output of the protocol.
+    """
+    response_message = {
+        "response": IDENTITY_PATH + " output",
+        "input": output,
+        "sender": IDENTITY_PATH,
+        "receiver": main_protocol,
+        "requestID": main_protocol_requestID,
+    }
+    send_main_message(response_message)
 
 
 ### PROTOCOL MODIFICATION BELOW
 
 def handle_main_message(message):
-    global stop_event
+    global main_protocol
+    global main_protocol_requestID
+    global active_requests
+
     log(f"Handling message from main: {message}")
+    
+    if message.get('request'):
+        main_protocol = message.get('sender')
+        main_protocol_requestID = message.get('requestID')
 
-    if message['action'] == "start":
-        log("Message for main process to start")
-        stop_event.clear()  # Reset the stop event
-        main_thread = threading.Thread(target=main, daemon=True)
-        main_thread.start()
+    elif message.get('response'):
+        active_requests.pop(message.get('requestID'))
+        request_responses[message.get('requestID')] = message
 
-    elif message.get('action') == "stop":
-        log(f"Message for main process to stop")
-        stop_event.set()  # Signal the thread to stop
+    if message.get('action') or message.get('request'):
+        if message.get('action') == "start" or message.get('request') == "start":
+            log("Message for main process to start")
+            output = main(message.get('input'))   
+            if message.get('request'):
+                send_ouput(output)
+            send_quit_message()
+        elif message.get('action') == "stop" or message.get('request') == "stop":
+            log(f"Message for main process to stop")
+            send_quit_message()
     return
  
-def main():
-    try:
-        while not stop_event.is_set():
-            send_main_message("'status': 'template protocol working'")
-            time.sleep(10)  # To reduce CPU usage
+def main(input):
+    # Type 1 - Single output protocol
+    input_a = input.get('input_a')
+    input_b = input.get('input_b')
+    def do_something(input_a, input_b):
+        output_a = None
+    output_a = do_something(input_a, input_b)
+    return output_a
 
-    except Exception as e:
-        log(f"Error in template: {e}")
-        log(traceback.format_exc())
 
-    finally:
-        log("Template Protocol stopped")
+    # Type 2 - Multiple output protocols
+    while true or some_condition:
+        input_a = input.get('input_a')
+        input_b = input.get('input_b')
+        def do_something(input_a, input_b):
+            output_a = {"action": "output_a", "input": None}
+        output_a = do_something(input_a, input_b)
+        send_output(output_a)
 
 
 
@@ -113,7 +180,7 @@ if __name__ == "__main__":
     log("Template Protocol started")
 
     # Create and start a thread for handling communication
-    communication_thread = threading.Thread(target=handle_main_communication, args=(pipe,), daemon=True)
+    communication_thread = threading.Thread(target=set_up_communication, daemon=True)
     communication_thread.start()
 
     while True:

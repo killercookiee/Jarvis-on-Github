@@ -23,6 +23,8 @@ COMPUTER_COMMS_LOG = LOCAL_FOLDER + "Communication-Folder/computer_comms.log"
 EXTENSION_COMMS_LOG = LOCAL_FOLDER + "Communication-Folder/extension_comms.log"
 LAST_POSITION_FILE = LOCAL_FOLDER + "Communication-Folder/last_position.log"
 
+message_rate = 5 # message per second
+
 
 # Global variable to control monitoring
 def log(message, file_path=LOG_FILE_PATH):
@@ -91,7 +93,7 @@ def read_computer_comms():
         with open(LAST_POSITION_FILE, "w") as file:
             file.write(str(position))
 
-            
+    global message_rate
     last_position = get_last_position()
     if os.path.exists(COMPUTER_COMMS_LOG):
         while True:  # Continuous loop to keep monitoring
@@ -110,46 +112,19 @@ def read_computer_comms():
                             log(f"Failed to parse line: {line.strip()}. Error: {e}")
                             continue  # Skip this line if parsing fails
 
-                        # Only send messages if the action is "start_noise" or "end_noise"
                         save_last_position(comm_file.tell())  # Save position after each action
 
-                        return_message = {
-                            "action": message.get('action'),
-                            "input": message.get('input', {}),
-                            "sender": message.get('sender'),
-                            "receiver": "GitHub Jarvis/background.js"
-                        }
-
-                        return return_message
+                        return message
                     
                 else:
-                    time.sleep(100)
-                    return {}
+                    wait_time = 1 / message_rate
+                    time.sleep(wait_time)
+                    return {}  # Return empty message if no new messages
 
-def write_extension_comms(message, input_data = {}, sender = IDENTITY_PATH, receiver = "/Users/killercookie/Jarvis/MAIN-communication/MAIN_COMMUNICATION.py"):
+def write_extension_comms(message):
     """Send message to MAIN_COMMUNICATION.py through the extension_comms.log file"""
-    if isinstance(message, dict):
-        # Case 1: Full JSON-like dictionary is provided
-        json_message = message
-    else:
-        # Case 2: String-based message like "'action': 'end_noise'" or "'response': 'finished'"
-        message = message.strip()
-        key, value = message.split(":")
-        key = key.strip().replace("'", "")
-        value = value.strip().replace("'", "")
 
-        # Handle all possible keys: 'action', 'response', 'message', 'status'
-        if key in ["action", "response", "message", "status"]:
-            json_message = {
-                key: value,  # Dynamically use the correct key
-                'input': input_data,
-                'sender': sender,
-                'receiver': receiver
-            }
-        else:
-            raise ValueError(f"Unexpected key '{key}' in message. Supported keys are 'action', 'response', 'message', and 'status'.")
-
-    json_message = json.dumps(json_message)
+    json_message = json.dumps(message)
 
     log(f"Writing into extension_comms: {str(json_message)}")
 
@@ -182,7 +157,7 @@ if __name__ == "__main__":
         while True:
             try:
                 message = read_message()
-                log(f"Message received: {message}")
+                log(f"Message received from google: {message}")
                 json_message = json.loads(message)
                 log(f"JSON message: {json_message}")
 

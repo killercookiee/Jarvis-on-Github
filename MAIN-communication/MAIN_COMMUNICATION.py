@@ -5,8 +5,9 @@ import threading
 import zmq
 import json
 import ast
+from pathlib import Path
 
-LOCAL_FOLDER = "/Users/killercookie/Jarvis-on-Github/"
+
 PYTHON_INTERPRETER = "/usr/local/bin/python3"
 
 IDENTITY_PATH = os.path.abspath(__file__)
@@ -16,14 +17,28 @@ if not os.path.exists(LOG_FILE_PATH):
     with open(LOG_FILE_PATH, 'a') as log_file:
         pass
 
+def find_local_folder(folder_name="Jarvis-on-Github"):
+    current_path = os.path.abspath(__file__)  # Absolute path of the current script
+    current_dir = os.path.dirname(current_path)
 
-MAIN_NATIVE_HOST_PATH = LOCAL_FOLDER + "Native-hosts/main_native_host.py"
+    while True:
+        if folder_name in os.listdir(current_dir):
+            target_folder = os.path.join(current_dir, folder_name)
+            if os.path.isdir(target_folder):
+                return target_folder
+        parent_dir = os.path.dirname(current_dir)
+        if parent_dir == current_dir:  # Reached the root
+            break
+        current_dir = parent_dir
+
+    raise FileNotFoundError(f"Folder '{folder_name}' not found in the directory tree.")
+LOCAL_FOLDER = find_local_folder()
 EXTENSION_COMMS_LOG = LOCAL_FOLDER + "Communication-Folder/extension_comms.log"
 COMPUTER_COMMS_LOG = LOCAL_FOLDER + "Communication-Folder/computer_comms.log"
 
+message_rate = 5 # Rate at which messages are sent per seconds
 
 subprocesses = {}
-subprocess_events = {}
 comms_last_position = 0
 
 context = zmq.Context()
@@ -47,48 +62,10 @@ def clear_all_logs():
     clear_log(EXTENSION_COMMS_LOG)
     log("All logs cleared on initialization.")
 
-def create_subprocess_paths(local_folder):
-    """Connects the subprocess path and its name"""
-    protocols_folder = os.path.join(local_folder, 'Protocols')
-    subprocess_paths = {}
-
-    # Walk through the Protocols folder and subfolders
-    for root, dirs, files in os.walk(protocols_folder):
-        for file in files:
-            if file.endswith('.py'):
-                # Get the script name in uppercase with _SUBPROCESS ending
-                script_name = os.path.splitext(file)[0].upper() + "_SUBPROCESS"
-                script_path = os.path.join(root, file)
-                
-                # Store the script path in the dictionary
-                subprocess_paths[script_name] = script_path
-
-    return subprocess_paths
-
-def write_computer_comms(message, input_data = {}, sender = IDENTITY_PATH, receiver = MAIN_NATIVE_HOST_PATH):
+def send_google_message(message):
     """Send message to the extension through the computer_comms.log file"""
-    if isinstance(message, dict):
-        # Case 1: Full JSON-like dictionary is provided
-        json_message = message
-    else:
-        # Case 2: String-based message like "'action': 'end_noise'" or "'response': 'finished'"
-        message = message.strip()
-        key, value = message.split(":")
-        key = key.strip().replace("'", "")
-        value = value.strip().replace("'", "")
 
-        # Handle all possible keys: 'action', 'response', 'message', 'status'
-        if key in ["action", "response", "message", "status"]:
-            json_message = {
-                key: value,  # Dynamically use the correct key
-                'input': input_data,
-                'sender': sender,
-                'receiver': receiver
-            }
-        else:
-            raise ValueError(f"Unexpected key '{key}' in message. Supported keys are 'action', 'response', 'message', and 'status'.")
-
-    json_message = json.dumps(json_message)
+    json_message = json.dumps(message)
 
     with open(COMPUTER_COMMS_LOG, "a") as log_file:
         log_file.write(f"{str(json_message)}\n")
@@ -96,6 +73,7 @@ def write_computer_comms(message, input_data = {}, sender = IDENTITY_PATH, recei
 def read_extension_comms():
     """Read the messages from the extension through the extension_comms.log file"""
 
+    global message_rate
     current_line = 0  # Track which line we should read next
 
     while True:  # Continuous loop to keep monitoring
@@ -143,94 +121,79 @@ def read_extension_comms():
                         # Move to next line regardless of whether processing succeeded
                         current_line += 1
             
-            time.sleep(1)  # Check for new messages every second
+            wait_time = 1 / message_rate
+            time.sleep(wait_time)  # Check for new messages every second
             
         except Exception as e:
             log(f"Error in read_extension_comms: {e}")
-            time.sleep(1)  # Wait before retrying
+            wait_time = 1 / message_rate
+            time.sleep(wait_time)  # Wait before retrying
 
-def send_message_subprocess(message, input_data = {}, sender = IDENTITY_PATH, receiver = None):
-    """Send message to a subprocess"""
-    global subprocesses, subprocess_events
-   
-    # Wait for subprocess pipe to finish setting up
-    subprocess_events[receiver].wait(timeout=5)
-    
-    # Handling the json Message
-    if isinstance(message, dict):
-        # Case 1: Full JSON-like dictionary is provided
-        json_message = message
-    else:
-        # Case 2: String-based message like "'action': 'end_noise'" or "'response': 'finished'"
-        message = message.strip()
-        key, value = message.split(":")
-        key = key.strip().replace("'", "")
-        value = value.strip().replace("'", "")
+def send_message_subprocess(message):
+    """Send a message to a subprocess."""
+    global subprocesses
 
-        # Handle all possible keys: 'action', 'response', 'message', 'status'
-        if key in ["action", "response", "message", "status"]:
-            json_message = {
-                key: value,  # Dynamically use the correct key
-                'input': input_data,
-                'sender': sender,
-                'receiver': receiver
-            }
-        else:
-            raise ValueError(f"Unexpected key '{key}' in message. Supported keys are 'action', 'response', 'message', and 'status'.")
-        
-    json_message = json.dumps(json_message)
+    requestID = message.get('requestID')
+
+    # Check if the receiver exists in subprocess_events
+    if requestID not in subprocesses:
+        log(f"Subprocess {requestID} not found in events.")
+        return
+
+    # Ensure the message is a dictionary
+    if not isinstance(message, dict):
+        raise ValueError("Message must be a dictionary.")
+
+    # Serialize the message to JSON format
+    json_message_str = json.dumps(message)
 
     # Check if the subprocess exists
-    if receiver in subprocesses:
-        pipe = subprocesses[receiver]['pipe']
+    if requestID in subprocesses:
+        pipe = subprocesses[requestID]['pipe']
 
         try:
             # Send the message to the subprocess
-            pipe.send_string(json_message)
-            log(f"Sent message to {receiver}: {json_message}")
+            pipe.send_string(json_message_str)
+            log(f"Sent message to {subprocesses[requestID]['subprocess_path']}: {json_message_str}")
         except zmq.ZMQError as e:
-            log(f"Error sending message to {receiver}: {e}")
+            log(f"Error sending message to {requestID}: {e}")
     else:
-        log(f"Subprocess {receiver} not found.")
+        log(f"Subprocess {subprocesses[requestID]['subprocess_path']} not found.")
 
-def activate_subprocess(script_name, index=0):
-    """Activates a subprocess using the file path"""
-    global subprocesses, subprocess_events
+def activate_subprocess(script_path, requestID):
+    """Activates a subprocess using the file path."""
+    global subprocesses
 
-    # Check if the subprocess is already running
-    existing_subprocess = next((s for s in subprocesses if s.startswith(script_name)), None)
-    if existing_subprocess:
-        # Add an index number to differentiate this instance
-        script_name = f"{script_name}_{index}"
+    # Convert the script path to an absolute path
+    identity_path = os.path.abspath(script_path)
 
     # Create a new event for this subprocess
     pipe_ready_event = threading.Event()
-    subprocess_events[script_name] = pipe_ready_event
 
     def handle_subprocess_communication(pipe):
-        """Handles messages received from the subprocess"""
+        """Handles messages received from the subprocess."""
         while True:
             try:
                 message_str = pipe.recv_string().replace("'", '"')
                 message = json.loads(message_str)
 
-                log(f"Received message from {script_name}: {message}")
+                log(f"Received message from {identity_path}: {message}")
                 handle_message(message)
             except zmq.ZMQError as e:
-                log(f"Error in communication with {script_name}: {e}")
+                log(f"Error in communication with {identity_path}: {e}")
                 break
 
     def setup_pipe():
-        """Sets up the pipe for communication with the subprocess"""
+        """Sets up the pipe for communication with the subprocess."""
         # Create a communication pipe
         pipe = context.socket(zmq.PAIR)
-        pipe.bind(f"ipc://{script_name}.ipc")
-        subprocesses[script_name] = {'process': subprocess.Popen([PYTHON_INTERPRETER, script_name]), 'pipe': pipe, 'thread': None}
-        log(f"{script_name} subprocess started with pipe.")
+        pipe.bind(f"ipc://{identity_path}.ipc")
+        subprocesses[requestID] = {'subprocess_path': identity_path, 'process': subprocess.Popen([PYTHON_INTERPRETER, script_path]), 'pipe': pipe, 'thread': None, }
+        log(f"{identity_path} subprocess started with pipe.")
 
         communication_thread = threading.Thread(target=handle_subprocess_communication, args=(pipe,), daemon=True)
         communication_thread.start()
-        subprocesses[script_name]['thread'] = communication_thread
+        subprocesses[requestID]['thread'] = communication_thread
 
         pipe_ready_event.set()
 
@@ -241,13 +204,14 @@ def activate_subprocess(script_name, index=0):
     pipe_ready_event.wait()
     time.sleep(0.1)  # Wait for the subprocess to start
 
-def deactivate_subprocess(script_name):
-    global subprocesses, subprocess_events
+def deactivate_subprocess(script_path, requestID):
+    """Deactivates a subprocess using the file path."""
+    global subprocesses
 
     # Check if the subprocess exists
-    if script_name in subprocesses:
+    if requestID in subprocesses:
         # Retrieve the subprocess and related components
-        subprocess_info = subprocesses[script_name]
+        subprocess_info = subprocesses[requestID]
         process = subprocess_info['process']
         pipe = subprocess_info['pipe']
         communication_thread = subprocess_info['thread']
@@ -255,80 +219,108 @@ def deactivate_subprocess(script_name):
         # Close the communication pipe
         try:
             pipe.close()
-            log(f"Pipe for {script_name} closed.")
+            log(f"Pipe for {script_path} closed.")
         except Exception as e:
-            log(f"Error closing pipe for {script_name}: {e}")
+            log(f"Error closing pipe for {script_path}: {e}")
 
         # Terminate the subprocess
         if process.poll() is None:  # Check if the process is still running
             try:
                 process.terminate()
                 process.wait()  # Ensure process termination
-                log(f"{script_name} subprocess terminated.")
+                log(f"{script_path} subprocess terminated.")
             except Exception as e:
-                log(f"Error terminating subprocess {script_name}: {e}")
+                log(f"Error terminating subprocess {script_path}: {e}")
 
         # Wait for the communication thread to exit
         if communication_thread and communication_thread.is_alive():
             try:
                 communication_thread.join(timeout=2)  # Give it some time to clean up
-                log(f"Communication thread for {script_name} stopped.")
+                log(f"Communication thread for {script_path} stopped.")
             except Exception as e:
-                log(f"Error stopping communication thread for {script_name}: {e}")
+                log(f"Error stopping communication thread for {script_path}: {e}")
 
         # Remove the subprocess from the global list
-        del subprocesses[script_name]
-        del subprocess_events[script_name]
-        log(f"Subprocess {script_name} successfully deactivated.")
+        del subprocesses[requestID]
+        log(f"Subprocess {script_path} successfully deactivated.")
     else:
-        log(f"Subprocess {script_name} does not exist.")
-    
+        log(f"Subprocess {script_path} does not exist.")  
 
-### SUBPROCESS MODIFICATION BELOW
-subprocess_paths = create_subprocess_paths(LOCAL_FOLDER)
+def send_response_message(message):
+    """Sends a response message to the appropriate receiver."""
+    if message.get('sender').startswith("Protocols/"):
+        send_message_subprocess(message, message.get('receiver'))
+    elif message.get('sender') == "Google Jarvis/background.js" or message.get('sender').startswith("tab/"):
+        send_google_message(message)
+    else:
+        log(f"Warning: Response message not sent to {message.get('sender')}: {message}")
 
-
-
-# Function to handle messages specific to each subprocess
 def handle_message(message):
     """Handles all the messages from the subprocess and the extension"""
     log(f"Handling message from {message.get('sender')}: {message}")
 
-    # Handles message from subprocess
-    if message.get('sender') == subprocess_paths['SOUND_ACTIVATION_SUBPROCESS']:
-        if message['action'] == "start_noise":
-            log(f"{message.get('sender')} reported noise started.")
-            write_computer_comms(message)
-
-        elif message.get('action') == "end_noise":
-            log(f"{message.get('sender')} reported noise ended.")
-            write_computer_comms(message)
-
-
-    # Handles message from extension
-    if message.get('sender') == "GitHub Jarvis/background.js":
-        if message['action'] == "start_sound_activation":
-            log(f"Generate protocol function activated")
-            activate_subprocess(subprocess_paths['SOUND_ACTIVATION_SUBPROCESS'])
-            send_message_subprocess(message="'action': 'start", receiver=subprocess_paths['SOUND_ACTIVATION_SUBPROCESS'])
-
-        elif message['action'] == "stop_sound_activation":
-            deactivate_subprocess(subprocess_paths['SOUND_ACTIVATION_SUBPROCESS'])
-
-    # Handles message to map protocols subprocess
-    if message.get('receiver') == subprocess_paths['MAP_PROTOCOLS_SUBPROCESS']:
-        if message['action'] == "start":
-            log(f"{message.get('sender')} requested to start MAP_PROTOCOLS_SUBPROCESS")
-            activate_subprocess(subprocess_paths['MAP_PROTOCOLS_SUBPROCESS'])
-            send_message_subprocess(message="'action': 'start", receiver=subprocess_paths['MAP_PROTOCOLS_SUBPROCESS'])
-        elif message['action'] == "stop":
-            log(f"{message.get('sender')} requested to stop MAP_PROTOCOLS_SUBPROCESS")
-            write_computer_comms(message)
-            deactivate_subprocess(subprocess_paths['MAP_PROTOCOLS_SUBPROCESS'])
+    if message.get('receiver').startswith("Protocols/"):
+        if message.get('requestID') in subprocesses:
+            send_message_subprocess(message)
         else:
-            log(f"Unrecognized action: {message['action']}")
+            log(f"Warning: Subprocess {message.get('receiver')} not found.")
 
+    elif message.get('receiver') == "Main-communication/MAIN_COMMUNICATION.py":
+        handle_message_for_main(message)
+            
+    elif message.get('receiver') == "Google Jarvis/background.js" or message.get('receiver').startswith("tab/"):
+        send_google_message(message)
 
+    else:
+        log(f"Warning: Message not sent to {message.get('receiver')}")
+   
+
+### SUBPROCESS MODIFICATION BELOW
+
+# Function to handle all messages 
+
+def handle_message_for_main(message):
+    """Handles messages for MAIN_COMMUNICATION""" 
+    if message.get('action') == "activate_subprocess" or message.get('request') == "activate_subprocess":
+        activate_subprocess(message.get('input').get('script_path'), message.get('sender'))
+
+        if message.get('request'):
+            response_message = {
+                "response": "Subprocess activated",
+                "input": None,
+                "sender": message.get('receiver'),
+                "receiver": message.get('sender'),
+                "requestID": message.get('requestID')
+            }
+            send_response_message(response_message)
+
+    elif message.get('action') == "deactivate_subprocess" or message.get('request') == "deactivate_subprocess":
+        deactivate_subprocess(message.get('input').get('script_path'), message.get('sender'))
+
+        if message.get('request'):
+            response_message = {
+                "response": "Subprocess deactivated",
+                "input": None,
+                "sender": message.get('receiver'),
+                "receiver": message.get('sender'),
+                "requestID": message.get('requestID')
+            }
+            send_response_message(response_message)
+    
+    else:
+        log(f"Warning: Action {message.get('action')} not recognized.")
+
+def start_main_communication():
+    """Starts up the MAIN_COMMUNICATION process"""
+    
+    # Clear logs on start
+    clear_log(LOG_FILE_PATH)
+    clear_log(COMPUTER_COMMS_LOG)
+    log("MAIN_COMMUNICATION started")
+
+    extension_comms_thread = threading.Thread(target=read_extension_comms, daemon=True)
+    extension_comms_thread.start()
+     
 ### SUBPROCESS MODIFICATION ABOVE
 
 
@@ -337,18 +329,7 @@ def handle_message(message):
 if __name__ == "__main__":
     """Sets up the communication with the extension"""
     try:
-        # Clear logs on start
-        clear_log(LOG_FILE_PATH)
-        clear_log(COMPUTER_COMMS_LOG)
-        log("MAIN_COMMUNICATION started")
-
-        extension_comms_thread = threading.Thread(target=read_extension_comms, daemon=True)
-        extension_comms_thread.start()
-
-
-        # Other processes that starts upon startup:
-        activate_subprocess(subprocess_paths['SOUND_ACTIVATION_SUBPROCESS'])
-        send_message_subprocess(message="'action': 'start", receiver=subprocess_paths['SOUND_ACTIVATION_SUBPROCESS'])
+        start_main_communication()
 
         # Keep MAIN_COMMUNICATION running
         while True:

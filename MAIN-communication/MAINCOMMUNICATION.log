@@ -1,18 +1,7 @@
-2024-11-09 05:22:47 - MAIN_COMMUNICATION started
-2024-11-09 05:22:47 - Monitoring extension comms
-2024-11-09 05:22:47 - /Users/killercookie/Jarvis-on-Github/Protocols/Audio-protocols/sound_activation.py subprocess started with pipe.
-2024-11-09 05:22:48 - Monitoring extension comms
-2024-11-09 05:22:48 - Sent message to /Users/killercookie/Jarvis-on-Github/Protocols/Audio-protocols/sound_activation.py: {"action": "start", "input": {}, "sender": "/Users/killercookie/Jarvis-on-Github/MAIN-communication/MAIN_COMMUNICATION.py", "receiver": "/Users/killercookie/Jarvis-on-Github/Protocols/Audio-protocols/sound_activation.py"}
-2024-11-09 05:22:49 - Monitoring extension comms
-2024-11-09 05:22:50 - Monitoring extension comms
-2024-11-09 05:22:51 - Monitoring extension comms
-2024-11-09 05:22:52 - Monitoring extension comms
-2024-11-09 05:22:53 - Monitoring extension comms
-2024-11-09 05:22:54 - Monitoring extension comms
-2024-11-09 05:22:55 - Monitoring extension comms
-2024-11-09 05:22:56 - Monitoring extension comms
-2024-11-09 05:22:57 - Monitoring extension comms
-2024-11-09 05:22:58 - Monitoring extension comms
-2024-11-09 05:22:59 - Monitoring extension comms
-2024-11-09 05:23:00 - Monitoring extension comms
-2024-11-09 05:23:01 - Monitoring extension comms
+2024-11-18 16:49:42 - MAIN_COMMUNICATION started
+2024-11-18 16:49:42 - Monitoring extension comms
+2024-11-18 16:49:42 - /Users/killercookie/Jarvis-on-Github/Protocols/Protocol-analysis-protocols/map_protocols.py subprocess started with pipe.
+2024-11-18 16:49:42 - Sent message to /Users/killercookie/Jarvis-on-Github/Protocols/Protocol-analysis-protocols/map_protocols.py: {"action": "start"}
+2024-11-18 16:49:43 - Monitoring extension comms
+2024-11-18 16:49:44 - Monitoring extension comms
+2024-11-18 16:49:45 - Monitoring extension comms

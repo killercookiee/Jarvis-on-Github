@@ -1,6 +1,87 @@
-2024-11-09 05:22:18 - Template Protocol started
-2024-11-09 05:22:18 - Received message from main: {'action': 'start', 'input': {}, 'sender': '/Users/killercookie/Jarvis-on-Github/MAIN-communication/MAIN_COMMUNICATION.py', 'receiver': '/Users/killercookie/Jarvis-on-Github/Protocols/Protocol-analysis-protocols/map_protocols.py'}
-2024-11-09 05:22:18 - Handling message from main: {'action': 'start', 'input': {}, 'sender': '/Users/killercookie/Jarvis-on-Github/MAIN-communication/MAIN_COMMUNICATION.py', 'receiver': '/Users/killercookie/Jarvis-on-Github/Protocols/Protocol-analysis-protocols/map_protocols.py'}
-2024-11-09 05:22:18 - Message for main process to start
-2024-11-09 05:22:18 - Mapping protocols
-2024-11-09 05:22:18 - Protocol map saved to ./protocol_map.json
+2024-11-18 16:49:42 - Template Protocol started
+2024-11-18 16:49:42 - Received message from main: {'action': 'start'}
+2024-11-18 16:49:42 - Handling message from main: {'action': 'start'}
+2024-11-18 16:49:42 - Message for main process to start
+2024-11-18 16:49:42 - Mapping protocols
+2024-11-18 16:49:42 - Added protocol to map: Protocols/Protocol-analysis-protocols/map_protocols.py
+2024-11-18 16:49:42 - Added protocol to map: Protocols/Protocol-analysis-protocols/get_related_protocols.py
+2024-11-18 16:49:42 - Added protocol to map: Protocols/Other-protocols/template_protocol.py
+2024-11-18 16:49:42 - Added protocol to map: Protocols/Audio-protocols/sound_activation.py
+2024-11-18 16:49:42 - Opening file: ./Extension-Jarvis/background.js
+2024-11-18 16:49:42 - Added protocol to map: Background_Protocols.CommunicationProtocols.communicateWithMainHost
+2024-11-18 16:49:42 - Extracted protocol: Background_Protocols.CommunicationProtocols.communicateWithMainHost
+2024-11-18 16:49:42 - Added protocol to map: Background_Protocols.CommunicationProtocols.sendnextMainHostNMessage
+2024-11-18 16:49:42 - Extracted protocol: Background_Protocols.CommunicationProtocols.sendnextMainHostNMessage
+2024-11-18 16:49:42 - Added protocol to map: Background_Protocols.CommunicationProtocols.sendMainHostMessage
+2024-11-18 16:49:42 - Extracted protocol: Background_Protocols.CommunicationProtocols.sendMainHostMessage
+2024-11-18 16:49:42 - Added protocol to map: Background_Protocols.CommunicationProtocols.sendMessageToSpecificTab
+2024-11-18 16:49:42 - Extracted protocol: Background_Protocols.CommunicationProtocols.sendMessageToSpecificTab
+2024-11-18 16:49:42 - Added protocol to map: Background_Protocols.GeneralProtocols.openNewTab
+2024-11-18 16:49:42 - Extracted protocol: Background_Protocols.GeneralProtocols.openNewTab
+2024-11-18 16:49:42 - Completed mapping for Background_Protocols
+2024-11-18 16:49:42 - Opening file: ./Extension-Jarvis/content.js
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElement
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElement
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.clickVcRecordButton
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.clickVcRecordButton
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElementGone
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeForElementGone
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.extractGPTText
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.extractGPTText
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.get_conversation_number
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.get_conversation_number
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeUserMessages
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.observeUserMessages
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.noiseProtocol.handleStartNoise
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.noiseProtocol.handleStartNoise
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.noiseProtocol.handleEndNoise
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.noiseProtocol.handleEndNoise
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.initialize_observer
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.initialize_observer
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.continuous_observerGPTResponse
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.continuous_observerGPTResponse
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.handleGPTResponse
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.handleGPTResponse
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.sendToProblemSolver
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.ConversationGPTProtocol.sendToProblemSolver
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.initialize_observer
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.initialize_observer
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.continuous_observerGPTResponse
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.continuous_observerGPTResponse
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.handleGPTResponse
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.handleGPTResponse
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.sendToProtocolGenerationGPT
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.sendToProtocolGenerationGPT
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.initialize_observer
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.initialize_observer
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.continuous_observerGPTResponse
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.continuous_observerGPTResponse
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.handleGPTResponse
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.handleGPTResponse
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.waitForStableDOM
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.waitForStableDOM
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.getTabId
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.getTabId
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.getTabId
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.ChatGPT_Protocols.utilityProtocols.getTabId
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.GeneralProtocols.utilityProtocols.send_request_message
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.GeneralProtocols.utilityProtocols.send_request_message
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.GeneralProtocols.Protocol_analysisProtocols.map_protocols
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.GeneralProtocols.Protocol_analysisProtocols.map_protocols
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.GeneralProtocols.Protocol_analysisProtocols.process_command_details
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.GeneralProtocols.Protocol_analysisProtocols.process_command_details
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.GeneralProtocols.Protocol_analysisProtocols.get_asset_file
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.GeneralProtocols.Protocol_analysisProtocols.get_asset_file
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.GeneralProtocols.Protocol_analysisProtocols.get_protocol_map
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.GeneralProtocols.Protocol_analysisProtocols.get_protocol_map
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.GeneralProtocols.Protocol_analysisProtocols.check_command_is_executable
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.GeneralProtocols.Protocol_analysisProtocols.check_command_is_executable
+2024-11-18 16:49:42 - Added protocol to map: Tab_Protocols.GeneralProtocols.Protocol_analysisProtocols.get_related_protocols
+2024-11-18 16:49:42 - Extracted protocol: Tab_Protocols.GeneralProtocols.Protocol_analysisProtocols.get_related_protocols
+2024-11-18 16:49:42 - Completed mapping for Tab_Protocols
+2024-11-18 16:49:42 - Protocol map saved to ./protocol_map.json
+2024-11-18 16:49:42 - Protocol map saved to ./Extension-Jarvis/assets/protocol_map.json

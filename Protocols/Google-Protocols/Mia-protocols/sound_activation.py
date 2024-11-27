@@ -2,7 +2,7 @@
 Name: sound_activation.py
 Description: This is the protocol to detect when a voice has been made then sends a message to the Google extension to press the mia voice button on the chatgpt tab
 Prerequisites: Conversation GPT opened
-Inputs: Sound from the microphone
+Inputs: Sound from the microphone, message.start - to start the sound detection, message.stop - to stop the sound detection
 Outputs: start_noise, end_noise to Conversation GPT
 Tags: audio, voice, mia, chatgpt, google extension
 Subprotocols: None
@@ -19,8 +19,6 @@ import zmq
 import threading
 import json
 
-# Paths for communication and log files
-LOCAL_FOLDER = "/Users/killercookie/Jarvis-on-Github/"
 
 IDENTITY_PATH = os.path.abspath(__file__)
 LOG_FILE_PATH = os.path.join(os.path.dirname(IDENTITY_PATH), os.path.basename(IDENTITY_PATH).replace("_", "").replace(".py", ".log"))
@@ -29,15 +27,18 @@ if not os.path.exists(LOG_FILE_PATH):
     with open(LOG_FILE_PATH, 'a') as log_file:
         pass
 
-
-MAIN_PATH = LOCAL_FOLDER + "MAIN-communication/MAIN_COMMUNICATION.py"
-
-
-context = zmq.Context()
-pipe = context.socket(zmq.PAIR)
-pipe.connect(f"ipc://{IDENTITY_PATH}.ipc")
-
 stop_event = threading.Event()
+
+
+pipe = None
+
+def set_up_communication():
+    global pipe
+
+    context = zmq.Context()
+    pipe = context.socket(zmq.PAIR)
+    pipe.connect(f"ipc://{IDENTITY_PATH}.ipc")
+    handle_main_communication(pipe)
 
 def log(message, file_path=LOG_FILE_PATH):
     """Utility function to log into log file."""
@@ -62,30 +63,9 @@ def handle_main_communication(pipe):
             log(f"Error in communication with main: {e}")
             break
 
-def send_main_message(message, input_data={}, sender=IDENTITY_PATH, receiver=MAIN_PATH):
+def send_main_message(message):
     """"Send message to MAIN_COMMUNICATION.py"""
-    if isinstance(message, dict):
-        # Case 1: Full JSON-like dictionary is provided
-        json_message = message
-    else:
-        # Case 2: String-based message like "'action': 'end_noise'" or "'response': 'finished'"
-        message = message.strip()
-        key, value = message.split(":")
-        key = key.strip().replace("'", "")
-        value = value.strip().replace("'", "")
-
-        # Handle all possible keys: 'action', 'response', 'message', 'status'
-        if key in ["action", "response", "message", "status"]:
-            json_message = {
-                key: value,  # Dynamically use the correct key
-                'input': input_data,
-                'sender': sender,
-                'receiver': receiver
-            }
-        else:
-            raise ValueError(f"Unexpected key '{key}' in message. Supported keys are 'action', 'response', 'message', and 'status'.")
-
-    json_message = json.dumps(json_message)
+    json_message = json.dumps(message)
         
     # Ensure the pipe is open and ready before sending
     if pipe:
@@ -109,11 +89,14 @@ def handle_main_message(message):
         main_thread = threading.Thread(target=main, daemon=True)
         main_thread.start()
 
-    elif message.get('action') == "stop":
-        log(f"Message for sound_activation main process stop")
+    elif message.get('action') == "pause":
+        log(f"Message for sound_activation main process pause")
         stop_event.set()  # Signal the thread to stop
 
-    return
+    elif message.get('action') == "resume":
+        log(f"Message for sound_activation main process resume")
+        stop_event.clear() # Reset the stop event
+
  
 def main():
     """This is the main function"""
@@ -223,7 +206,7 @@ if __name__ == "__main__":
     log("Sound activation script started")
 
     # Create and start a thread for handling communication
-    communication_thread = threading.Thread(target=handle_main_communication, args=(pipe,), daemon=True)
+    communication_thread = threading.Thread(target=set_up_communication, daemon=True)
     communication_thread.start()
 
     while True:
