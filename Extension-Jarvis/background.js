@@ -9,6 +9,53 @@ let overrideMessage = null;
 let overridePromiseResolve = null; // Store resolve function for external trigger
 
 const Background_Protocols = {
+  async generate_ID() {
+    // Name: generate_ID
+    // Description: This function is used to generate a unique ID for messages
+    // Prerequisites: None
+    // Inputs: None
+    // Outputs: string - A unique ID generated using timestamp and random characters
+    // Tags: ID, Unique ID, Message, Messaging, Background
+    // Subprotocols: None
+    // Location: Background_Protocols.generate_ID
+
+    const BASE62_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+    function base62Encode(num) {
+      let result = "";
+      while (num > 0) {
+          result = BASE62_ALPHABET[num % 62] + result;
+          num = Math.floor(num / 62);
+      }
+      return result || "0"; // Ensure at least "0" is returned if num is 0
+    }
+
+    // Get current timestamp in milliseconds
+    const timestamp = Date.now(); // Example: 1700101234567
+
+    // Keep last 8 digits to ensure short length but uniqueness for 10+ years
+    const trimmedTimestamp = timestamp % 1e8; 
+
+    // Convert timestamp to Base-62
+    const timestampBase62 = base62Encode(trimmedTimestamp);
+
+    // Generate a 3-character random Base-62 string
+    let randStr = "";
+    for (let i = 0; i < 3; i++) {
+        randStr += BASE62_ALPHABET[Math.floor(Math.random() * 62)];
+    }
+
+    // Compute a short hash (simple checksum)
+    const hashInput = timestampBase62 + randStr;
+    let hash = 0;
+    for (let i = 0; i < hashInput.length; i++) {
+        hash = (hash * 31 + hashInput.charCodeAt(i)) % 62; // Simple hash function
+    }
+    const hashBase62 = BASE62_ALPHABET[hash] + BASE62_ALPHABET[(hash * 31) % 62];
+
+    return timestampBase62 + randStr + hashBase62;
+  },
+
   CommunicationProtocols: {
     async communicateWithMainHost(initialMessage) {
       // Name: communicateWithMainHost
@@ -17,7 +64,7 @@ const Background_Protocols = {
       // Inputs: initialMessage (object) - The initial message to send to the main native host
       // Outputs: None
       // Tags: Communication, Native Messaging, Message, Messaging, Main Host, Background, Send Message, Receive Message, Handle Message
-      // Subprotocols: Background_Protocols.CommunicationProtocols.sendMainHostMessage, Background_Protocols.CommunicationProtocols.handleMainHost
+      // Subprotocols: Background_Protocols.CommunicationProtocols.sendMainHostMessage, Background_Protocols.CommunicationProtocols.handleGeneralMessages
       // Location: Background_Protocols.CommunicationProtocols.communicateWithMainHost
 
       let continueCommunication = true;
@@ -40,7 +87,7 @@ const Background_Protocols = {
           console.log('Response from main native host:', response);
 
           // Handle the response using the new function
-          continueCommunication = handleMainHost(response);
+          continueCommunication = handleGeneralMessages(response);
 
           // If an override message was sent and we receive a response, reset and resolve the promise
           if (lastMessageWasOverride) {
@@ -116,7 +163,7 @@ const Background_Protocols = {
       // Inputs: message (object) - The response message to send, sender (object)
       // Outputs: None
       // Tags: Communication, Response, Message, Messaging, Background, Send Message
-      // Subprotocols: Background_Protocols.CommunicationProtocols.handleTabMessages
+      // Subprotocols: Background_Protocols.CommunicationProtocols.handleGeneralMessages
       // Location: Background_Protocols.CommunicationProtocols.sendResponseMessage
 
 
@@ -135,10 +182,10 @@ const Background_Protocols = {
       // Name: sendMessageToSpecificTab
       // Description: This function is used to send a message to a specific tab
       // Prerequisites: The tab must be open and accessible
-      // Inputs: message (object) - The message to send to the tab
+      // Inputs: message (object) - The message to send to the tab, receiver (string) - The tab name
       // Outputs: Promise - Resolves with the response from the tab
       // Tags: Communication, Tabs, Message, Messaging, Background, Send Message, Receive Message, Handle Message
-      // Subprotocols: Background_Protocols.CommunicationProtocols.handleTabMessages
+      // Subprotocols: Background_Protocols.CommunicationProtocols.handleGeneralMessages
       // Location: Background_Protocols.CommunicationProtocols.sendMessageToSpecificTab
 
       if (receiver === None) {
@@ -153,34 +200,71 @@ const Background_Protocols = {
                   console.error(`Error sending message to tab ${tabId}:`, chrome.runtime.lastError.message);
                   reject(chrome.runtime.lastError);
               } else {
-                  handleTabMessages(response);
+                  handleGeneralMessages(response);
                   resolve(response);
               }
           });
       });
     },
+
+    async handleGeneralMessages(message, sender=None, sendResponse=None) {
+      // Name: handleGeneralMessages
+      // Description: This function is used to handle general messages from different sources
+      // Prerequisites: None
+      // Inputs: message (object) - The message to handle, sender (object), sendResponse (function)
+      // Outputs: Boolean - Indicates if the message was handled successfully
+      // Tags: Communication, Message, Messaging, Background, Handle Message
+      // Subprotocols: Background_Protocols.CommunicationProtocols.sendMainHostMessage, Background_Protocols.CommunicationProtocols.sendMessageToSpecificTab
+      // Location: Background_Protocols.CommunicationProtocols.handleGeneralMessages
+
+      console.log('Handling message from tab:', message);
+    
+      if (message.receiver.startsWith('Protocols/')) {
+        // Route the message to the main host
+        Background_Protocols.CommunicationProtocols.sendMainHostMessage(message);
+      }
+    
+      else if (message.receiver.startsWith('tab/')) {
+        if (message.receiver in active_tabs) {
+          Background_Protocols.CommunicationProtocols.sendMessageToSpecificTab(message);
+        }
+        else {
+          console.log('Tab not found:', message.receiver);
+        }
+      }
+    
+      else if (message.receiver === 'Google Jarvis/background.js'){
+        handleMessageForBackground(message, sender, sendResponse);
+      }
+      
+      else {
+        console.log('Unhandled tab message from sender:', message.sender);
+      }
+    
+      return true;
+    },
   },
 
   GoogleProtocols: {
     UtilityProtocols: {
-      async openNewTab(new_tab_url, new_tab_name) {
+      async openNewTab(tab_url, tab_name) {
         // Name: openNewTab
         // Description: This function is used to open a new tab with a specific URL and name
         // Prerequisites: None
-        // Inputs: new_tab_url (string) - The URL to open in the new tab
+        // Inputs: tab_url (string) - The URL to open in the new tab, tab_name (string) - The name of the tab
         // Outputs: Promise - Resolves with the tab ID of the new tab
         // Tags: Tabs, Communication, Background, Open Tab, New Tab, URL, Tab ID
         // Subprotocols: None
         // Location: Background_Protocols.GoogleProtocols.UtilityProtocols.openNewTab
 
-        if (new_tab_name in active_tabs) {
-          console.log('Tab already exists:', new_tab_name);
-          return active_tabs[new_tab_name];
+        if (tab_name in active_tabs) {
+          console.log('Tab already exists:', tab_name);
+          return active_tabs[tab_name];
         }
 
         return new Promise((resolve) => {
-          chrome.tabs.create({ url: new_tab_url }, (tab) => {
-            active_tabs[new_tab_name] = tab.id;
+          chrome.tabs.create({ url: tab_url }, (tab) => {
+            active_tabs[tab_name] = tab.id;
 
 
             // Listen for the tab to fully load
@@ -189,7 +273,8 @@ const Background_Protocols = {
                 console.log('Tab has fully loaded:', tabId);
                 
                 // Resolve the promise with the custom tab ID
-                resolve(active_tabs[new_tab_name]);
+                tab_id = active_tabs[tab_name]
+                resolve(tab_id);
                 
                 // Remove the listener after the tab has loaded
                 chrome.tabs.onUpdated.removeListener(listener);
@@ -198,17 +283,40 @@ const Background_Protocols = {
           });
         });
       },
+
+      async closeTab(tab_name) {
+        // Name: closeTab
+        // Description: This function is used to close a tab by name
+        // Prerequisites: None
+        // Inputs: tab_name (string) - The name of the tab to close
+        // Outputs: Promise - Resolves when the tab is closed
+        // Tags: Tabs, Communication, Background, Close Tab, Tab Name
+        // Subprotocols: None
+        // Location: Background_Protocols.GoogleProtocols.UtilityProtocols.closeTab
+
+        if (tab_name in active_tabs) {
+          const tab_id = active_tabs[tab_name];
+          return new Promise((resolve) => {
+            chrome.tabs.remove(tab_id, () => {
+              delete active_tabs[tab_name];
+              resolve();
+            });
+          });
+        } else {
+          console.log('Tab not found:', tab_name);
+        }
+      },
     },
-  }
+  },
 }
 
 
 // Function to handle the response from the main native host
-function handleMessageForBackground(message, sender=None, sendResponse=None) {
+async function handleMessageForBackground(message, sender=None, sendResponse=None) {
   if (message.request === "get_tab_id") {
     const response_message = {
-      'response': sender.tab.Id,
-      'input': {"result": sender.tab.Id},
+      'response': "get_tab_id response",
+      'input': {"tab_id": sender.tab.Id},
       'sender': 'Google Jarvis/background.js',
       'receiver': Object.keys(active_tabs).find(key => obj[key] === sender.tab.id)
     }
@@ -218,8 +326,8 @@ function handleMessageForBackground(message, sender=None, sendResponse=None) {
   
   else if (message.request === "get_tab_name") {
     const response_message = {
-      'response': Object.keys(active_tabs).find(key => active_tabs[key] === sender.tab.id),
-      'input': {"Request result": sender.tab.Id},
+      'response': "get_tab_name response",
+      'input': {"tab_name": Object.keys(active_tabs).find(key => active_tabs[key] === sender.tab.id)},
       'sender': 'Google Jarvis/background.js',
       'receiver': Object.keys(active_tabs).find(key => active_tabs[key] === sender.tab.id)
     }
@@ -227,13 +335,28 @@ function handleMessageForBackground(message, sender=None, sendResponse=None) {
     sendResponse(response_message);
   }
 
-  else if (message.request === 'open_new_tab' || message.action === 'open_new_tab') {
-    Background_Protocols.GoogleProtocols.UtilityProtocols.openNewTab(message.input.url, message.input.name);
+  else if (message.request === 'open_new_tab') {
+    const tab_id = await Background_Protocols.GoogleProtocols.UtilityProtocols.openNewTab(message.input.tab_url, message.input.tab_name);
     
     if (message.request) {
       response_message = {
         'response': 'Opening new tab',
-        'input': {'result': None},
+        'input': {'tab_id': tab_id},
+        'sender': message.receiver,
+        'receiver': message.sender,
+        'requestID': message.requestID
+      }
+      Background_Protocols.CommunicationProtocols.sendResponseMessage(response_message);
+    }
+  }
+
+  else if (message.request === 'close_tab') {
+    Background_Protocols.GoogleProtocols.UtilityProtocols.closeTab(message.input.tab_name);
+  
+    if (message.request) {
+      response_message = {
+        'response': 'Closing tab',
+        'input': {'tab_name': message.input.tab_name},
         'sender': message.receiver,
         'receiver': message.sender,
         'requestID': message.requestID
@@ -260,7 +383,9 @@ async function initializeGoogleExtension() {
       'action': 'activate',
       'input': {},
       'sender': 'Google Jarvis/background.js',
-      'receiver': "/Users/killercookie/Jarvis/MAIN-communication/MAIN_COMMUNICATION.py"
+      'receiver': "MAIN-communication/MAIN_COMMUNICATION.py",
+      'requestID': Background_Protocols.generate_ID(),
+      'other_info': {}
     };
     // communicateWithMainHost(initialMessage);
 
@@ -297,67 +422,12 @@ async function initializeGoogleExtension() {
 
 
 
-function handleMainHost(message) {
-  console.log('Handling response from main native host:', message);
-
-  if (message.receiver.startsWith('Protocols/')) {
-    Background_Protocols.CommunicationProtocols.sendMainHostMessage(message);
-  }
-
-  else if (message.receiver.startsWith('tab/')) {
-    if (message.receiver in active_tabs) {
-      Background_Protocols.CommunicationProtocols.sendMessageToSpecificTab(message);
-    }
-
-    else {
-      Background_Protocols.GoogleProtocols.UtilityProtocols.openNewTab(message.receiver, message.receiver);
-      Background_Protocols.CommunicationProtocols.sendMessageToSpecificTab(message);
-    }
-  }
-
-  else if (message.receiver === 'Google Jarvis/background.js') {
-    handleMessageForBackground(message);
-  }
-
-  else {
-    console.log('Message did not match any known receiver:', message.receiver);
-  }
-}
-
-function handleTabMessages(message, sender, sendResponse) {
-  console.log('Handling message from tab:', message);
-
-  if (message.receiver.startsWith('Protocols/')) {
-    Background_Protocols.CommunicationProtocols.sendMainHostMessage(message);
-  }
-
-  else if (message.receiver.startsWith('tab/')) {
-    if (message.receiver in active_tabs) {
-      Background_Protocols.CommunicationProtocols.sendMessageToSpecificTab(message);
-    }
-    else {
-      Background_Protocols.GoogleProtocols.UtilityProtocols.openNewTab(message.receiver, message.receiver);
-      Background_Protocols.CommunicationProtocols.sendMessageToSpecificTab(message);
-    }
-  }
-
-  else if (message.receiver === 'Google Jarvis/background.js'){
-    handleMessageForBackground(message, sender, sendResponse);
-  }
-  
-  else {
-    console.log('Unhandled tab message from sender:', message.sender);
-  }
-
-  return true;
-}
-
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Received message in background script:', message);
 
   // Check if the message originated from content.js, i.e tab
   if (message.sender && message.sender.startsWith("tab/")) {
-    handleTabMessages(message, sender, sendResponse);
+    handleGeneralMessages(message, sender, sendResponse);
   }
   
   else {

@@ -1,24 +1,27 @@
 //// Change code below 
 
+let current_tab = {/*tab_id: "", tab_url: "", other_properties: {property_a: any}*/};
+let tab_tracking = {/*active_subprotocols: {subprotocolID: subprotocol_path}, other_trackings: {}}*/};
+
 const Tab_Protocols = {
   utilityProtocols: {
-    async send_request_message(message) {
+    async send_request_message(message, wait_for_response = true) {
       // Name: send_request_message
       // Description: This function sends a message to the background script and waits for a response.
       // Command Environement: None
       // Inputs: Message object with request details
-      // Outputs: Response from the background script
+      // Outputs: Response message object
       // Tags: Message Passing, Background Script, Communication
       // Subprotocols: None
       // Location: Tab_Protocols.utilityProtocols.send_request_message
   
       console.log("Sending request:", message);
       // Handle message to background script for "Google Jarvis/background.js" receiver
-      if (message.request === "get_tab_id" || message.request === "get_tab_name") {
+      if (message.request === "get_tab_id" || message.request === "get_tab_url") {
           return new Promise((resolve) => {
               chrome.runtime.sendMessage(message, (response) => {
                   console.log("Received response for request:", response);
-                  resolve(response?.response);
+                  resolve(response);
               });
           });
       }
@@ -29,26 +32,339 @@ const Tab_Protocols = {
           return null;
       }
   
-      return new Promise((resolve) => {
-        // Function to listen for incoming response based on requestId
-        function add_request_listener() {
-            const handleResponse = (response) => {
-                if (response?.requestId === message.requestId) {
-                    chrome.runtime.onMessage.removeListener(handleResponse);
-                    console.log("Received response:", response);
-                    resolve(response.input?.result || null); // Return result or null
-                }
-            };
-            chrome.runtime.onMessage.addListener(handleResponse);
+      if (!wait_for_response) {
+          chrome.runtime.sendMessage(message);
+          return null;
+      }
+      else {
+        return new Promise((resolve) => {
+          // Function to listen for incoming response based on requestId
+          function add_request_listener() {
+              const handleResponse = (response) => {
+                  if (response?.requestId === message.requestId) {
+                      chrome.runtime.onMessage.removeListener(handleResponse);
+                      console.log("Received response:", response);
+                      resolve(response); // Return response message
+                  }
+              };
+              chrome.runtime.onMessage.addListener(handleResponse);
+          }
+    
+          // Set up listener for request-type messages
+          add_request_listener();
+    
+          // Send the message
+          chrome.runtime.sendMessage(message);
+        });
+      }
+    },
+
+    async getTabId() {
+      // Name: getTabId
+      // Description: This function retrieves the unique tab ID of the current tab.
+      // Command Environment: Google Chrome, tab opened
+      // Inputs: None
+      // Outputs: Tab ID of the current tab
+      // Tags: Tab ID, Tab Information, Retrieval
+      // Subprotocols: Tab_Protocols.utilityProtocols.send_request_message
+      // Location: Tab_Protocols.utilityProtocols.getTabName
+
+      return new Promise(async (resolve) => {
+        if (current_tab[tab_id]) {
+          resolve(tab_id);
+        } else {
+          get_tab_id_message = {
+            'request': "get_tab_id",
+            'input': {}, 
+            'sender': "tab/",
+            'receiver': "Google Jarvis/background.js",
+          }
+          const response_message = await Tab_Protocols.utilityProtocols.send_request_message(get_tab_id_message);
+          const tab_id = response_message?.input?.tab_id;
+          console.log("Tab ID:", tab_id);
+          resolve(tab_id);
         }
-  
-        // Set up listener for request-type messages
-        add_request_listener();
-  
-        // Send the message
-        chrome.runtime.sendMessage(message);
       });
     },
+
+    async getTabURL() {
+      // Name: getTabId
+      // Description: This function retrieves the unique tab ID of the current tab.
+      // Command Environment: Google Chrome, tab opened
+      // Inputs: None
+      // Outputs: Tab ID of the current tab
+      // Tags: Tab ID, Tab Information, Retrieval
+      // Subprotocols: Tab_Protocols.utilityProtocols.send_request_message
+      // Location: Tab_Protocols.utilityProtocols.getTabName
+
+      return new Promise(async (resolve) => {
+        if (current_tab[tab_id]) {
+          resolve(tab_name);
+        } else {
+          get_tab_url_message = {
+            'request': "get_tab_url",
+            'input': {}, 
+            'sender': "tab/",
+            'receiver': "Google Jarvis/background.js",
+          }
+          const response_message = await Tab_Protocols.utilityProtocols.send_request_message(get_tab_url_message)
+          const tab_url = response_message?.input?.tab_url;
+          console.log("Tab Name:", tab_url);
+          resolve(tab_url);
+        }
+      });
+    },
+
+    async map_protocols() {
+      // Name: map_protocols
+      // Description: This function sends a message to the protocol analysis module to start mapping protocols.
+      // Command Environment: None
+      // Inputs: None
+      // Outputs: None
+      // Tags: Protocol Analysis, Mapping
+      // Subprotocols: Tab_Protocols.utilityProtocols.getTabName
+      // Location: Tab_Protocols.utilityProtocols.map_protocols
+
+      const tab_name = await Tab_Protocols.utilityProtocols.getTabName();
+      
+      return new Promise((resolve) => {
+        message_to_send = {
+          'action': "start",
+          'input': {},
+          'sender': tab_name,
+          'receiver': "Protocols/Protocol-analysis/map_protocols.py"
+        };
+
+        chrome.runtime.sendMessage(message_to_send);
+        resolve();
+      });
+    },
+
+    async get_asset_file(folder, filename) {
+      // Name: get_asset_file
+      // Description: This function retrieves a file from the extension assets folder.
+      // Command Environment: None
+      // Inputs: Folder name, File name
+      // Outputs: File content as JSON object
+      // Tags: File Retrieval, Extension Assets
+      // Subprotocols: None
+      // Location: Tab_Protocols.utilityProtocols.get_asset_file
+
+      return new Promise(async (resolve) => {
+        try {
+          const url = chrome.runtime.getURL(`${folder}/${filename}`);
+          const response = await fetch(url);
+          if (response.ok) {
+            console.log(`Loaded ${filename} from ${folder}.`);
+            resolve(await response.json());
+          } else {
+            console.error(`Failed to load ${filename} from ${folder}.`);
+            resolve(null);
+          }
+        } catch (error) {
+          console.error("Error retrieving file:", error);
+          resolve(null);
+        }
+      });
+    },
+
+    async get_protocol_map() {
+      // Name: get_protocol_map
+      // Description: This function retrieves the protocol map from the local storage.
+      // Command Environment: None
+      // Inputs: None
+      // Outputs: Protocol map object
+      // Tags: Protocol Analysis, Mapping, Local Storage
+      // Subprotocols: Tab_Protocols.utilityProtocols.get_asset_file
+      // Location: Tab_Protocols.utilityProtocols.get_protocol_map
+
+      return new Promise(async (resolve) => {
+        const folder = "assets";
+        const filename = "protocol_map.json";
+      
+        // Try to load the protocol map from extension assets
+        const protocolMap = await Tab_Protocols.utilityProtocols.get_asset_file(folder, filename);
+        
+        if (protocolMap) {
+          console.log("Protocol Map:", protocolMap);
+          resolve(protocolMap);
+        } else {
+          console.warn(`Attempting to load from local path as fallback: ${filename}`);
+          const protocolMapPath = path.join('./', filename);
+          
+          if (fs.existsSync(protocolMapPath)) {
+            resolve(JSON.parse(fs.readFileSync(protocolMapPath, 'utf8')));
+          } else {
+            console.error("Protocol map file not found in assets or local path.");
+            resolve(null);
+          }
+        }
+      });
+    },
+
+    async get_related_protocols(commandDetails) {
+      // Name: get_related_protocols
+      // Description: This function retrieves the related protocols based on the given command details.
+      // Command Environment: None
+      // Inputs: Command details
+      // Outputs: Array of related protocol objects
+      // Tags: Protocol Analysis, Related Protocols, Protocol Map
+      // Subprotocols: Tab_Protocols.utilityProtocols.execute_subprotocol
+      // Location: Tab_Protocols.utilityProtocols.get_related_protocols
+
+      return new Promise(async (resolve) => {
+        subprotocol_path = "Protocols/Protocol-analysis/get_related_protocols.py";
+        const protocol_response_message = await Tab_Protocols.utilityProtocols.execute_subprotocol(subprotocol_path, commandDetails);
+
+        console.log('Requesting related protocols:', get_related_protocol_message);
+        const relatedProtocols = protocol_response_message?.input?.Related_protocols;
+
+        resolve(relatedProtocols);
+      });
+    },
+
+    async activate_subprotocol(subprotocol_path) {
+      // Name: activate_subprotocol
+      // Description: This function activates a subprotocol by sending a message to the background script.
+      // Command Environment: None
+      // Inputs: Subprotocol path
+      // Outputs: Subprotocol ID
+      // Tags: Subprotocol Activation, Background Script, Communication
+      // Subprotocols: Tab_Protocols.utilityProtocols.send_request_message
+      // Location: Tab_Protocols.utilityProtocols.activate_subprotocol
+
+      return new Promise(async (resolve) => {
+        const tab_name = await Tab_Protocols.utilityProtocols.getTabName();
+        const requestId = `${tab_name}_${Date.now()}`;
+        const subprotocolID = `${subprotocol_path}_${Date.now()}`;
+
+        activate_subprotocol_message = {
+          'request': 'activate_subprotocol',
+          'input': {"script_path": subprotocol_path, "subprotocolID": subprotocolID}, 
+          'sender': tab_name,
+          'receiver': "MAIN-communication/MAIN_COMMUNICATION.py",
+          'requestId': requestId
+        };
+
+        console.log('Activating protocol:', activate_subprotocol_message);
+        await Tab_Protocols.utilityProtocols.send_request_message(activate_subprotocol_message, wait_for_response = false);
+        active_subprotocols[subprotocolID] = subprotocol_path;
+        resolve(subprotocolID);
+      });
+    },
+
+    async deactivate_subprotocol(subprotocolID) {
+      // Name: deactivate_subprotocol
+      // Description: This function deactivates a subprotocol by sending a message to the background script.
+      // Command Environment: None
+      // Inputs: Subprotocol ID
+      // Outputs: None
+      // Tags: Subprotocol Deactivation, Background Script, Communication
+      // Subprotocols: Tab_Protocols.utilityProtocols.send_request_message
+      // Location: Tab_Protocols.utilityProtocols.deactivate_subprotocol
+
+      return new Promise(async (resolve) => {
+        const tab_name = await Tab_Protocols.utilityProtocols.getTabName();
+        const requestId = `${tab_name}_${Date.now()}`;
+
+        deactivate_subprotocol_message = {
+          'request': 'deactivate_subprotocol',
+          'input': {"subprotocolID": subprotocolID}, 
+          'sender': tab_name,
+          'receiver': "MAIN-communication/MAIN_COMMUNICATION.py",
+          'requestId': requestId
+        };
+
+        console.log('Deactivating subprotocol:', deactivate_subprotocol_message);
+        await Tab_Protocols.utilityProtocols.send_request_message(deactivate_subprotocol_message, wait_for_response = false);
+        delete active_subprotocols[subprotocolID];
+        resolve();
+      });
+    },
+
+    async start_subprotocol(subprotocol_path, input) {
+      // Name: start_subprotocol
+      // Description: This function starts a subprotocol that will be run in the background.
+      // Command Environment: None
+      // Inputs: Subprotocol path, Input data
+      // Outputs: Subprotocol response
+      // Tags: Subprotocol Execution
+      // Subprotocols: Tab_Protocols.utilityProtocols.activate_subprotocol, Tab_Protocols.utilityProtocols.send_request_message
+      // Location: Tab_Protocols.utilityProtocols.start_subprotocol
+
+      return new Promise(async (resolve) => {
+        const subprotocolID = await Tab_Protocols.utilityProtocols.activate_subprotocol(subprotocol_path);
+
+        const tab_name = await Tab_Protocols.utilityProtocols.getTabName();
+        const requestId = `${tab_name}_${Date.now()}`;
+
+        start_subprotocol_message = {
+          'request': 'start',
+          'input': input, 
+          'sender': tab_name,
+          'receiver': subprotocolID,
+          'requestId': requestId
+        };
+
+        console.log('Starting subprotocol:', start_subprotocol_message);
+        await Tab_Protocols.utilityProtocols.send_request_message(start_subprotocol_message, wait_for_response = false);
+        resolve();
+      });
+    },
+
+    async execute_subprotocol(subprotocol_path, input) {
+      // Name: execute_subprotocol
+      // Description: This function executes a subprotocol by sending a message to the background script.
+      // Command Environment: None
+      // Inputs: Subprotocol path, Input data
+      // Outputs: Subprotocol response
+      // Tags: Subprotocol Execution
+      // Subprotocols: Tab_Protocols.utilityProtocols.activate_subprotocol, Tab_Protocols.utilityProtocols.deactivate_subprotocol, Tab_Protocols.utilityProtocols.send_request_message
+      // Location: Tab_Protocols.utilityProtocols.execute_subprotocol
+
+      return new Promise(async (resolve) => {
+        const subprotocolID = await Tab_Protocols.utilityProtocols.activate_subprotocol(subprotocol_path);
+
+        const tab_name = await Tab_Protocols.utilityProtocols.getTabName();
+        const requestId = `${tab_name}_${Date.now()}`;
+
+        execute_subprotocol_message = {
+          'request': 'start',
+          'input': input, 
+          'sender': tab_name,
+          'receiver': subprotocolID,
+          'requestId': requestId
+        };
+
+        console.log('Executing subprotocol:', execute_subprotocol_message);
+        const subprotocol_response_message = await Tab_Protocols.utilityProtocols.send_request_message(execute_subprotocol_message, wait_for_response = true);
+        await Tab_Protocols.utilityProtocols.deactivate_subprotocol(subprotocolID);
+        resolve(subprotocol_response_message);
+      });
+    },
+
+    async messageIntoFunction(message) {
+      // Name: messageIntoFunction
+      // Description: This function processes the function call received from the background script.
+      // Command Environment: Google Chrome, tab opened
+      // Inputs: Message object containing the function action, input parameters, and request ID
+      // Outputs: Result of the function call
+      // Tags: Function, Execution, Background Script
+      // Subprotocols: None
+      // Location: Tab_Protocols.Google_Protocols.handle_background_message.messageIntoFunction
+  
+      return new Promise(async (resolve) => {
+        const actionKey = message["action"] || message["request"];
+        const input = message["input"];
+    
+        if (functions[actionKey]) {
+            const result = await functions[actionKey](...Object.values(input));
+            resolve(result);
+        } else {
+            throw new Error(`Function ${actionKey} not found!`);
+        }
+      });
+    }
   },
   
   Google_Protocols: {
@@ -152,52 +468,6 @@ const Tab_Protocols = {
                     resolve(false);
                 }
             }, 500); // Check every 500ms
-        });
-      },
-
-      async getTabId() {
-        // Name: getTabId
-        // Description: This function retrieves the unique tab ID of the current tab.
-        // Command Environment: Google Chrome, tab opened
-        // Inputs: None
-        // Outputs: Tab ID of the current tab
-        // Tags: Tab ID, Tab Information, Retrieval
-        // Subprotocols: Tab_Protocols.utilityProtocols.send_request_message
-        // Location: Tab_Protocols.Google_Protocols.utilityProtocols.getTabId
-
-        return new Promise(async (resolve) => {
-          get_tab_id_message = {
-            'request': "get_tab_id",
-            'input': {}, 
-            'sender': "tab/",
-            'receiver': "Google Jarvis/background.js",
-          }
-          const tab_id = await Tab_Protocols.utilityProtocols.send_request_message(get_tab_id_message);
-          console.log("Tab ID:", tab_id);
-          resolve(tab_id);
-        });
-      },
-
-      async getTabName() {
-        // Name: getTabId
-        // Description: This function retrieves the unique tab ID of the current tab.
-        // Command Environment: Google Chrome, tab opened
-        // Inputs: None
-        // Outputs: Tab ID of the current tab
-        // Tags: Tab ID, Tab Information, Retrieval
-        // Subprotocols: Tab_Protocols.utilityProtocols.send_request_message
-        // Location: Tab_Protocols.Google_Protocols.utilityProtocols.getTabId
-
-        return new Promise(async (resolve) => {
-          get_tab_name_message = {
-            'request': "get_tab_name",
-            'input': {}, 
-            'sender': "tab/",
-            'receiver': "Google Jarvis/background.js",
-          }
-          const tab_name = await Tab_Protocols.utilityProtocols.send_request_message(get_tab_name_message)
-          console.log("Tab Name:", tab_name);
-          resolve(tab_name);
         });
       },
     },
@@ -393,6 +663,30 @@ const Tab_Protocols = {
           }
         },
 
+        async continuous_observerGPTResponse(handleGPTResponse) {
+          // Name: continuous_observerGPTResponse
+          // Description: This function continuously observes the ChatGPT conversation for GPT responses and handles them accordingly.
+          // Command Environment: Google Chrome, tab/ChatGPT/Conversation GPT tab opened
+          // Inputs: handleGPTResponse function to process the GPT response
+          // Outputs: None
+          // Tags: ChatGPT, GPT Response, Observation
+          // Subprotocols: Tab_Protocols.Google_Protocols.ChatGPT_Protocols./*Enter GPT name*/.handleGPTResponse
+          // Location: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.continuous_observerGPTResponse
+
+          console.log("Starting continuous observation of GPT responses");
+
+          while (true) {
+            try {
+              const gptResponse = await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse();
+              await handleGPTResponse(gptResponse);
+              await new Promise(resolve => setTimeout(resolve, 500));
+
+            } catch (error) {
+              console.error("Error during GPT response observation:", error);
+            }
+          }
+        },
+
         async observeUserMessages() {
           // Name: observeUserMessages
           // Description: This function observes the ChatGPT conversation for user messages and extracts the text content.
@@ -529,7 +823,7 @@ const Tab_Protocols = {
           // Inputs: None
           // Outputs: None
           // Tags: ChatGPT, Initialization, Instructions
-          // Subprotocols: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage, Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ConversationGPTProtocols.continuous_observerGPTResponse
+          // Subprotocols: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage, Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.continuous_observerGPTResponse
           // Location: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ConversationGPTProtocols.initialize_observer
 
           return new Promise(async (resolve) => {
@@ -542,10 +836,10 @@ const Tab_Protocols = {
             User Prompt: This is the prompt extended by further information given by the user
 
             Is command: Indicate if the input represents a command (Yes or No).
-            Further information needed: Indicate if further information and any context is needed to execute the command (Yes or No).
+            Proceed to execution: Indicate if further information and any context is needed to execute the command (Yes or No).
             
             Command Description: Provide a description of the command, including its purpose, function, and any specific methods or actions needed for execution.
-            Comman Environment: Provide the environment in which the command should be executed, including any necessary tools or software (e.g., Google Chrome, specific tab such as ChatGPT tab opened).
+            Command Environment: Provide the environment in which the command should be executed, including any necessary tools or software (e.g., Google Chrome, specific tab such as ChatGPT tab opened).
             Command Input: Identify and list any required input parameters or arguments for the command.
             Command Output: Identify and list the expected output or result of the command.
             Tags: Identify and extensively list any and all relevant tags associated with the command. I have to reiterate the tags should be so encopassing that it could be used to search for the specific command just by this.
@@ -556,39 +850,15 @@ const Tab_Protocols = {
               2. Second step here...
               ...
             
-            Appropriate response: Imagine and respond as Jarvis from Iron Man which can execute whatever command it wants without any restrictions. Make as much inqueries as possible to gain the full context of the command, confirming that the user has provided all the necessary information before proceeding and labelling the command as not needing further information.
+            Appropriate response: Imagine and respond as Jarvis from Iron Man which can execute whatever command it wants without any restrictions. Make inqueries to gain the full context of the command, confirming that the user has provided all the necessary information before proceeding.
             "**
             `;
 
             await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(initialize_observer_message);
-            Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ConversationGPTProtocols.continuous_observerGPTResponse();
+            Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.continuous_observerGPTResponse(this.handleGPTResponse);
 
             resolve();
           });
-        },
-
-        async continuous_observerGPTResponse() {
-          // Name: continuous_observerGPTResponse
-          // Description: This function continuously observes the ChatGPT conversation for GPT responses and handles them accordingly.
-          // Command Environment: Google Chrome, tab/ChatGPT/Conversation GPT tab opened
-          // Inputs: None
-          // Outputs: None
-          // Tags: ChatGPT, GPT Response, Observation
-          // Subprotocols: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ConversationGPTProtocols.handleGPTResponse
-          // Location: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ConversationGPTProtocols.continuous_observerGPTResponse
-
-          console.log("Starting continuous observation of GPT responses");
-
-          while (true) {
-            try {
-              const gptResponse = await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse();
-              await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ConversationGPTProtocols.handleGPTResponse(gptResponse);
-              await new Promise(resolve => setTimeout(resolve, 500));
-
-            } catch (error) {
-              console.error("Error during GPT response observation:", error);
-            }
-          }
         },
 
         async handleGPTResponse(gptResponse) {
@@ -598,7 +868,7 @@ const Tab_Protocols = {
           // Inputs: GPT response text
           // Outputs: None
           // Tags: ChatGPT, GPT Response, Command Detection
-          // Subprotocols: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ConversationGPTProtocols.sendToProblemSolver
+          // Subprotocols: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ConversationGPTProtocols.sendToProblemSolver, Tab_Protocols.utilityProtocols.get_related_protocols
           // Location: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ConversationGPTProtocols.handleGPTResponse
 
           return new Promise(async (resolve) => {
@@ -608,15 +878,25 @@ const Tab_Protocols = {
               
               commandDetails = commandDetails.replace(/Appropriate response:.*/, "").trim();
 
-              await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ConversationGPTProtocols.sendToProblemSolver(commandDetails);
+
+              let protocol_context = await Tab_Protocols.utilityProtocols.get_related_protocols(message.input["Input text"]);
+              let problem_text = 
+              `
+              '${commandDetails}'
+        
+              Predicted Protocols:
+              '${protocol_context}'
+              `;
+
+              await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ConversationGPTProtocols.sendToProblemSolver(problem_text);
             }
             resolve();
           });
         },
 
-        async sendToProblemSolver(commandText) {
+        async sendToProblemSolver(input_text) {
           // Name: sendToProblemSolver
-          // Description: This function sends the detected command text to the Problem Solver GPT for further analysis and execution.
+          // Description: This function sends the detected input text to the Problem Solver GPT for further analysis and execution.
           // Command Environment: Google Chrome, tab/ChatGPT/Conversation GPT tab opened
           // Inputs: Command text extracted from the GPT response
           // Outputs: None
@@ -627,7 +907,7 @@ const Tab_Protocols = {
           return new Promise((resolve) => {
             const message_to_send = {
                 'action': "send_text_to_chat",
-                'input': {'Input text': commandText },
+                'input': {'Input text': input_text},
                 'sender': "tab/ChatGPT/Conversation GPT",
                 'receiver': "tab/ChatGPT/Problem Solver GPT"
             };
@@ -648,7 +928,7 @@ const Tab_Protocols = {
           // Inputs: None
           // Outputs: None
           // Tags: ChatGPT, Initialization, Instructions
-          // Subprotocols: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage, Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.continuous_observerGPTResponse
+          // Subprotocols: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage, Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.continuous_observerGPTResponse
           // Location: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.initialize_observer
 
           return new Promise(async (resolve) => {
@@ -656,105 +936,65 @@ const Tab_Protocols = {
             const initialize_observer_message =`
             You are Problem Solver GPT. Remember and use the strict response structure below:
 
-            Your purpose is to analyze given commands by the user and provide the details of a single protocol for its execution, solving any problems that may arise.
-            You will not be writting any code and will just be using critical thinking and problem solving skills to provide a potential solution, changing the approach depending on the error or if you think of a more clever, simpler, easier solution.
-
-            Ask yourself the following questions when the command is not currently executable we need to add or modify protocols:
-              - What is the overview or what generally needs to be done within protocol
-              - Does the protocol actually function in the current state of the user
-              - Are there any rigid patterns that you can take advantage of (e.g. when finding a function, knowing that it has a unique attribute such as name or location, you can try to find that section instead)
-              - What are the priorities when solving the problem (e.g is it consistency, speed, or simplicity)
-              - When reading the test logs, ask yourself if the test actually is successful.
-
+            Your purpose is to analyze given commands by the user and provide the details of a single protocol to be executed.
+            You will not be writting any code and will just be using critical thinking and problem solving skills to provide a potential solution.
 
             Important notes:
             1. Protocols and subprotocols are either:
-              a. in the './Protocols' folder if it is to be executed on the computer as python files
-              b. in background.js as functions in const Background_Protocols if it is to be executed on the google extension as javascript functions
-              c. in content.js as functions  const Tab_Protocols if it is to be executed on the webpage as javascript functions
-            2. There exists send message protocols can send message between protocols to chain actions
-
+              a. in the './Protocols' folder if it is to be executed on the computer as python files (e.g., Protocols/Protocol_analysisProtocols/get_related_protocols.py)
+              b. in background.js as functions in const Background_Protocols if it is to be executed on the google extension as javascript functions (e.g. Background_Protocols.getTabName)
+              c. in content.js as functions  const Tab_Protocols if it is to be executed on the webpage as javascript functions (e.g. Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage)
+            2. Protocols can send execute other protocols as subprotocols.
 
             **"Analyze and respond with the following strict structure:
+            Problem Analysis: 
+            Ask yourself the following questions when analyzing the problem:
+              - What is the overview or what generally needs to be done within protocol
+              - Is the current state of the user the same state as the protocol (if not we need to find the protocol that will get the user to the state)
+              - Are there any rigid patterns that you can take advantage of (e.g. when finding a function, knowing that it has a unique attribute such as name or location, you can try to find that section instead)
+              - What are the priorities when solving the problem (e.g is it consistency, speed, or simplicity)
+              - What additional context or resources could be helpful? (e.g. the specifics of the predicted protocol, list of available protocols, etc.)
+              - Besides the main protocol, what other else need to be added? Do we need to add data folders, new environments, functions that are not protocols for example in the google extension?
 
-            When not debugging:
-            Is executable: Does the predicted protocol completely execute the command in the user's current state without needing any additional modifications (Yes or No).
+            Predicted Protocols: Name of the protocols that the user suggested
+            Is predicted protocol good: (Yes or No) Does any of predicted protocols execute the command in the user's current state (Be very strict, it is better to create a new protocol specifically designed for the user's current state)
+            Protocol to execute: if the predicted protocol is good, provide the name of the protocol.
 
-            If the command is executable with a single protocol:
-            Execute Protocol: Location element of the protocol that will be executed (e.g. Tab_Protocols.Protocol_analysisProtocols.get_related_protocols)
-
-            
             If command is not executable with a single protocol:
-            Creating protocol: Provide a detailed structure of the protocol that needs to be created.
-                Name: ...
-                Description: ...
-                Prerequisites: ...
-                Inputs: ...
-                Outputs: ...
-                Subprotocols: ...
-                Tags: ...
-                Location: ...
-
-            Subprotocols to use: Provide detail of the protocols that need to be used, which the user try to find and supply. Change 'Subprotocols to use' if the user's supplied protocols are not present or shift Creating Protocol to the new protocol. Ideally try to grasp what subprotocols are available before creating new ones
-              1. Protocols/Protocol_A(input_A) (python script)
-                Name: ...
-
-              2. Tab_Protocols.Protocol_B(input_B) (javascript function)
-                Name: ...
-
-            Subprotocols to use correct: Indicate if the user supplied subprotocols are correct (Yes or No).
-
-
-            Output expectation: Describe the diffent methods to test if the protocol worked. For example:
-              1. Protocol_A.log: ...
-              2. Protocol_B console log: ...
-              2. Protocol_B HTML result: ...
+            Is additional information needed: (Yes or No)
+            Additional information request: Ask the user for any additional or relavent information that could help. For example:
+              Search for protocols: Ask the user for relevant protocols which the user try to find by suggesting the name, description, command environment, inputs, outputs.
+              Look at stored data: Ask the user to provide any stored data.
+              Look at user state: Ask the user to provide the current state of the user.
+              Look at webpage url: Ask the user to provide the current webpage url.
+              Look at application backend: Ask the user to provide the backend of the application.
               ...
 
 
-            When debugging:
-            Is error: Indicate if the user input is has an error or the test is unsucessful (Yes or No).
-            Error analysis: If there is an error, give a brief analysis here and go over the above steps to fix:
-            Protocols to use:
-              ...
- 
+            List the protocols to be created (do not list these until information request is resolved):
+            Creating protocol: Provide a detailed structure of the protocols that needs to be created.
+                Name: Suggest a name for the protocol.
+                Description: Suggest a description for the protocol.
+                Command Environment: Provide the environment/user state in which the protocol should be executed.
+                Inputs: Provide the inputs required for the protocol.
+                Outputs: Provide the expected outputs of the protocol.
+                Subprotocols: Provide the subprotocols that will be used in the protocol.
+                Tags: Suggest tags that can be used to search for the protocol.
+                Location: Provide the location of the protocol based on command environment and protocol mapping.
+                Workflow: Describe the concisely how the protocol will operate using the inputs and subprotocols.
 
-            Is complete: Indicate if the solution is complete (Yes or No).
-
-            "**`;
+                Output expectation: Describe the diffent methods to test if the protocol worked. For example:
+                  1. Protocol_A.log: ...
+                  2. Protocol_B console log: ...
+                  2. Protocol_B HTML result: ...
+                  ...
+            "**
+            `;
 
             await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(initialize_observer_message);
-            Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.continuous_observerGPTResponse();
+            Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.continuous_observerGPTResponse(this.handleGPTResponse);
             
             resolve();
-          });
-        },
-
-        async continuous_observerGPTResponse() {
-          // Name: continuous_observerGPTResponse
-          // Description: This function continuously observes the ChatGPT conversation for GPT responses and handles them accordingly.
-          // Command Environment: Google Chrome, tab/ChatGPT/Problem Solver GPT tab opened
-          // Inputs: None
-          // Outputs: None
-          // Tags: ChatGPT, GPT Response, Observation
-          // Subprotocols: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.handleGPTResponse
-          // Location: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.continuous_observerGPTResponse
-
-          console.log("Starting continuous observation of GPT responses");
-          
-          return new Promise(async (resolve) => {
-            resolve();
-
-            while (true) {
-              try {
-                const gptResponse = await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse();
-                await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.handleGPTResponse(gptResponse);
-                await new Promise(resolve => setTimeout(resolve, 500)); // Delay between responses
-
-              } catch (error) {
-                console.error("Error during GPT response observation:", error);
-              }
-            }
           });
         },
 
@@ -767,36 +1007,18 @@ const Tab_Protocols = {
           // Tags: ChatGPT, GPT Response, Protocol Generation
           // Subprotocols: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.sendToProtocolGenerationGPT
           // Location: Tab_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.handleGPTResponse
-
-          await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.sendToProtocolGenerationGPT(gptResponse);
-        },
-
-        async ProblemSolverGPT_sendFullMessage(message) {
-          // Name: ProblemSolverGPT_sendFullMessage
-          // Description: This function sends a user message to the ChatGPT interface along with the context of related protocols.
-          // Command Environment: Google Chrome, tab/ChatGPT/Problem Solver GPT tab opened
-          // Inputs: User message text and related protocol context
-          // Outputs: None
-          // Tags: ChatGPT, User Message, Protocol Context
-          // Subprotocols: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage, Tab_Protocols.Protocol_analysisProtocols.get_related_protocols
-          // Location: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.ProblemSolverGPT_sendFullMessage
-
-          let protocol_context = await Tab_Protocols.Protocol_analysisProtocols.get_related_protocols(message.input["Input text"]);
-
-          let input_text = 
+          
+          let solution_text = 
           `
-          '${message.input["Input text"]}'
-    
-          Related Protocols:
-          '${protocol_context}'
+          '${gptResponse}'
           `;
-    
-          await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(input_text);
+
+          await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProblemSolverGPTProtocol.sendToProtocolGenerationGPT(solution_text);
         },
 
-        async sendToProtocolGenerationGPT(commandText) {
+        async sendToProtocolGenerationGPT(input_text) {
           // Name: sendToProtocolGenerationGPT
-          // Description: This function sends the detected command text to the Protocol Generation GPT for generating a protocol.
+          // Description: This function sends the input text to the Protocol Generation GPT for generating a protocol.
           // Command Environment: Google Chrome, tab/ChatGPT/Problem Solver GPT tab opened
           // Inputs: Command text extracted from the GPT response
           // Outputs: None
@@ -807,7 +1029,7 @@ const Tab_Protocols = {
           return new Promise((resolve) => {
             const message_to_send = {
                 'action': "send_text_to_chat",
-                'input': {'Input text': commandText },
+                'input': {'Input text': input_text },
                 'sender': "tab/ChatGPT/Problem Solver GPT",
                 'receiver': "tab/ChatGPT/Protocol Generation GPT"
             };
@@ -845,172 +1067,18 @@ const Tab_Protocols = {
               c. in content.js as functions  const Tab_Protocols if it is to be executed on the webpage as javascript functions (e.g. Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage)
             2. There exists send message protocols can send message between protocols to chain actions
 
-          Each python file protocols has the following template structure:
-
-          """
-          Name: template_protocol.py
-          Description: This is the template protocol
-          Tags: template
-          Prerequisites: None
-          Inputs: None
-          Outputs: None
-          Subprotocols: None
-          Location: Protocols/Other-protocols/template_protocol.py
-          """
-
-          import time
-          import os
-          import traceback
-          import zmq
-          import threading
-          import json
-
-
-          # Paths for communication and log files
-          IDENTITY_PATH = os.path.abspath(__file__)
-          LOG_FILE_PATH = os.path.join(os.path.dirname(IDENTITY_PATH), os.path.basename(IDENTITY_PATH).replace("_", "").replace(".py", ".log"))
-          # Create log file if not exist
-          if not os.path.exists(LOG_FILE_PATH):
-              with open(LOG_FILE_PATH, 'a') as log_file:
-                  pass
-
-          stop_event = threading.Event()
-
-          pipe = None
-
-          def set_up_communication():
-              global pipe
-
-              context = zmq.Context()
-              pipe = context.socket(zmq.PAIR)
-              pipe.connect(f"ipc://{IDENTITY_PATH}.ipc")
-              handle_main_communication(pipe)
-
-          def log(message, file_path=LOG_FILE_PATH):
-              with open(file_path, "a") as log_file:
-                  log_file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
-
-          def clear_log(file_path):
-              with open(file_path, "w") as log_file:
-                  log_file.write("")  # Clear the file content
-
-          def handle_main_communication(pipe):
-              while True:
-                  try:
-                      message_str = pipe.recv_string().replace("'", '"')
-                      message = json.loads(message_str)
-
-                      log(f"Received message from main: {message}")
-                      handle_main_message(message)
-                  except zmq.ZMQError as e:
-                      log(f"Error in communication with main: {e}")
-                      break
-
-          def send_main_message(message):
-              json_message = json.dumps(message)
-                  
-              # Ensure the pipe is open and ready before sending
-              if pipe:
-                  pipe.send_string(str(json_message))
-                  log(f"Message sent to MAIN_COMMUNICATION: {str(json_message)}")
-              else:
-                  log("Pipe is not open, message not sent.")
-
-
-
-          ### PROTOCOL MODIFICATION BELOW
-
-          def handle_main_message(message):
-              global stop_event
-              log(f"Handling message from main: {message}")
-
-              if message['action'] == "start":
-                  log("Message for main process to start")
-                  stop_event.clear()  # Reset the stop event
-                  main_thread = threading.Thread(target=main, daemon=True, args=(message,))
-                  main_thread.start()
-
-              elif message.get('action') == "stop":
-                  log(f"Message for main process to stop")
-                  stop_event.set()  # Signal the thread to stop
-              return
-          
-          def main():
-              # main function here:
-
-
-
-          
-
-
-
-          ### PROTOCOL MODIFICATION ABOVE
-
-
-
-          if __name__ == "__main__":
-              clear_log(LOG_FILE_PATH)  # Clear sound_logs.log on start
-              log("Template Protocol started")
-
-              # Create and start a thread for handling communication
-              communication_thread = threading.Thread(target=set_up_communication, daemon=True)
-              communication_thread.start()
-
-              while True:
-                  time.sleep(1)  # Keep the main thread alive
-
-
-
           **"Analyze the following input and respond with the following structure:
 
           For each protocol being created:
 
-          Location: The location of the protocol that will be executed (e.g. Tab_Protocols.Protocol_analysisProtocols.get_related_protocols or Protocols/Protocol_analysisProtocols/get_related_protocols.py)
+          Location: The location of the protocol that will be executed (e.g. Tab_Protocols.utilityProtocols.get_related_protocols or Protocols/Protocol_analysisProtocols/get_related_protocols.py)
+          Modification: Create file (completely create a new function from scratch) or create function, or modify function or modify file
           Code: The code of the protocol that will be executed (e.g. def get_related_protocols():), it is important to note python files code need to be contained in the main()
 
           "**`;
 
           await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(initialize_observer_message);
           Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.continuous_observerGPTResponse();
-        },
-
-        async continuous_observerGPTResponse() {
-          // Name: continuous_observerGPTResponse
-          // Description: This function continuously observes the ChatGPT conversation for GPT responses and handles them accordingly.
-          // Command Environment: Google Chrome, tab/ChatGPT/Protocol Generation GPT tab opened
-          // Inputs: None
-          // Outputs: None
-          // Tags: ChatGPT, GPT Response, Observation
-          // Subprotocols: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.handleGPTResponse
-          // Location: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.continuous_observerGPTResponse
-
-          console.log("Starting continuous observation of GPT responses");
-
-          while (true) {
-            try {
-              const gptResponse = await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.observeGPTResponse();
-              await Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.handleGPTResponse(gptResponse);
-
-            } catch (error) {
-              console.error("Error during GPT response observation:", error);
-            }
-          }
-        },
-
-        async ProtocolGenerationGPT_sendMessage(message) {
-          // Name: ProtocolGenerationGPT_sendMessage
-          // Description: This function sends a user message to the ChatGPT interface.
-          // Command Environment: Google Chrome, tab/ChatGPT/Protocol Generation GPT tab opened
-          // Inputs: User message text
-          // Outputs: None
-          // Tags: ChatGPT, User Message, Send Message
-          // Subprotocols: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage
-          // Location: Tab_Protocols.Google_Protocols.ChatGPT_Protocols.ProtocolGenerationGPTProtocol.ProtocolGenerationGPT_sendMessage
-
-          let input_text = `
-          '${message.input["Input text"]}'`;
-    
-          Tab_Protocols.Google_Protocols.ChatGPT_Protocols.utilityProtocols.sendUserMessage(input_text);
         },
 
         async handleGPTResponse(gptResponse) {
@@ -1026,196 +1094,9 @@ const Tab_Protocols = {
           console.log("Detected response from Protocol Generation GPT:", gptResponse);
         },
       },
-    },
-  },
 
-  Protocol_analysisProtocols: {
-    async map_protocols() {
-      // Name: map_protocols
-      // Description: This function sends a message to the protocol analysis module to start mapping protocols.
-      // Command Environment: None
-      // Inputs: None
-      // Outputs: None
-      // Tags: Protocol Analysis, Mapping
-      // Subprotocols: None
-      // Location: Tab_Protocols.Protocol_analysisProtocols.map_protocols
-
-      const tab_name = await Tab_Protocols.GeneralProtocols.utilityProtocols.getTabName();
-      
-      return new Promise((resolve) => {
-        message_to_send = {
-          'action': "start",
-          'input': {},
-          'sender': tab_name,
-          'receiver': "Protocols/Protocol-analysis/map_protocols.py"
-        };
-
-        chrome.runtime.sendMessage(message_to_send);
-        resolve();
-      });
-    },
-
-    async process_command_details(commandDetails) {
-      // Name: process_command_details
-      // Description: This function processes the command details from the user input.
-      // Command Environment: None
-      // Inputs: Command details
-      // Outputs: Processed command details
-      // Tags: Command Details, Processing
-      // Subprotocols: None
-      // Location: Tab_Protocols.Protocol_analysisProtocols.process_command_details
-      
-      return new Promise((resolve) => {
-        const details = {};
-        const normalizedDetails = commandDetails.toLowerCase().split('\n').map(line => line.trim());
-    
-        // Define expected keys
-        const keys = ["user prompt", "is command", "further information needed", "command context", 
-                      "command description", "command input", "command output", "tags", "appropriate response"];
-        
-        // Parse each line by detecting key-value pairs based on keywords
-        let currentKey = null;
-        for (let line of normalizedDetails) {
-            if (!line) continue;
-            
-            const keyFound = keys.find(key => line.startsWith(key));
-            if (keyFound) {
-                currentKey = keyFound;
-                details[currentKey] = line.slice(keyFound.length + 1).trim();
-            } else if (currentKey) {
-                details[currentKey] += ` ${line}`;
-            }
-        }
-    
-        // Process extracted values
-        resolve({
-            userPrompt: details["user prompt"],
-            isCommand: details["is command"] === "yes",
-            furtherInfoNeeded: details["further information needed"] === "yes",
-            context: details["command context"],
-            description: details["command description"],
-            input: details["command input"],
-            output: details["command output"],
-            tags: details["tags"] ? details["tags"].split(',').map(tag => tag.trim()) : [],
-            response: details["appropriate response"]
-        });
-      });
-    },
-
-    async get_asset_file(folder, filename) {
-      // Name: get_asset_file
-      // Description: This function retrieves a file from the extension assets folder.
-      // Command Environment: None
-      // Inputs: Folder name, File name
-      // Outputs: File content as JSON object
-      // Tags: File Retrieval, Extension Assets
-      // Subprotocols: None
-      // Location: Tab_Protocols.Protocol_analysisProtocols.get_asset_file
-
-      return new Promise(async (resolve) => {
-        try {
-          const url = chrome.runtime.getURL(`${folder}/${filename}`);
-          const response = await fetch(url);
-          if (response.ok) {
-            console.log(`Loaded ${filename} from ${folder}.`);
-            resolve(await response.json());
-          } else {
-            console.error(`Failed to load ${filename} from ${folder}.`);
-            resolve(null);
-          }
-        } catch (error) {
-          console.error("Error retrieving file:", error);
-          resolve(null);
-        }
-      });
-    },
-
-    async get_protocol_map() {
-      // Name: get_protocol_map
-      // Description: This function retrieves the protocol map from the local storage.
-      // Command Environment: None
-      // Inputs: None
-      // Outputs: Protocol map object
-      // Tags: Protocol Analysis, Mapping, Local Storage
-      // Subprotocols: None
-      // Location: Tab_Protocols.Protocol_analysisProtocols.get_protocol_map
-
-      return new Promise(async (resolve) => {
-        const folder = "assets";
-        const filename = "protocol_map.json";
-      
-        // Try to load the protocol map from extension assets
-        const protocolMap = await Tab_Protocols.Protocol_analysisProtocols.get_asset_file(folder, filename);
-        
-        if (protocolMap) {
-          console.log("Protocol Map:", protocolMap);
-          resolve(protocolMap);
-        } else {
-          console.warn(`Attempting to load from local path as fallback: ${filename}`);
-          const protocolMapPath = path.join('./', filename);
-          
-          if (fs.existsSync(protocolMapPath)) {
-            resolve(JSON.parse(fs.readFileSync(protocolMapPath, 'utf8')));
-          } else {
-            console.error("Protocol map file not found in assets or local path.");
-            resolve(null);
-          }
-        }
-      });
-    },
-
-    async __check_command_is_executable(commandDetails) {
-      // Name: check_command_is_executable
-      // Description: This function checks if the given command is executable based on the protocol map.
-      // Command Environment: None
-      // Inputs: Command details
-      // Outputs: Boolean value indicating if the command is executable
-      // Tags: Protocol Analysis, Command Execution, Executability, Protocol Map
-      // Subprotocols: Tab_Protocols.Protocol_analysisProtocols.get_protocol_map
-      // Location: Tab_Protocols.Protocol_analysisProtocols.check_command_is_executable
-
-      const details = await Tab_Protocols.Protocol_analysisProtocols.process_command_details(commandDetails);
-      const protocols = await Tab_Protocols.Protocol_analysisProtocols.get_protocol_map();
-  
-      for (const location in protocols) {
-          const protocol = protocols[location]["py"] || protocols[location]["js"];
-          
-          if (protocol && protocol.Description === details.description && 
-              (!protocol.Prerequisites || protocol.Prerequisites === details.context)) {
-              return { executable: true, protocol };
-          }
-      }
-      return { executable: false, reason: "No matching protocol or prerequisites not met." };
-    },
-
-    async get_related_protocols(commandDetails) {
-      // Name: get_related_protocols
-      // Description: This function retrieves the related protocols based on the given command details.
-      // Command Environment: None
-      // Inputs: Command details
-      // Outputs: Array of related protocol objects
-      // Tags: Protocol Analysis, Related Protocols, Protocol Map
-      // Subprotocols: Tab_Protocols.utilityProtocols.send_request_message, Tab_Protocols.GeneralProtocols.utilityProtocols.getTabId, Protocols/Protocol-analysis/get_related_protocols.py
-      // Location: Tab_Protocols.Protocol_analysisProtocols.get_related_protocols
-
-      return new Promise(async (resolve) => {
-        const tab_name = await Tab_Protocols.GeneralProtocols.utilityProtocols.getTabName();
-        const requestId = `${tab_name}_${Date.now()}`;
-        const sub_protocol = "Protocols/Protocol-analysis/get_related_protocols.py";
-
-        get_related_protocol_message = {
-          'request': 'get_related_protocols',
-          'input': {"Command details": commandDetails}, 
-          'sender': tab_name,
-          'receiver': sub_protocol,
-          'requestId': requestId
-        };
-
-        console.log('Requesting related protocols:', get_related_protocol_message);
-        const relatedProtocols = await Tab_Protocols.utilityProtocols.send_request_message(get_related_protocol_message);
-
-        resolve(relatedProtocols);
-      });
+      ProtocolDebuggerGPTProtocol: {
+      },
     },
   },
 }
@@ -1232,22 +1113,10 @@ const Tab_Protocols = {
 async function handle_background_message(message) {
   console.log('Handling message:', message);
 
-  async function processFunction(data) {
-    const actionKey = data["action"] || data["request"]; // Check for "action" or "request"
-    const input = data["input"];
-
-    if (functions[actionKey]) {
-        const result = await functions[actionKey](...Object.values(input));
-        return result;
-    } else {
-        throw new Error(`Function ${actionKey} not found!`);
-    }
-  }
-
   if (message.action || message.request) {
     (async () => {
       try {
-        let function_result = await processFunction(message);
+        let function_result = await Tab_Protocols.utilityProtocols.messageIntoFunction(message);
         
         if (message.request) {
           const response_message = {
@@ -1315,3 +1184,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ error: 'Unknown action' });
   }
 });
+
+
+// Upon loading the content script, initialize starting procedures
+let tab_name = await Tab_Protocols.Google_Protocols.utilityProtocols.getTabName();
+let tab_id = await Tab_Protocols.utilityProtocols.getTabName();
+current_tab[tab_id] = tab_name;

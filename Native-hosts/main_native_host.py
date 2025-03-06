@@ -23,7 +23,7 @@ COMPUTER_COMMS_LOG = LOCAL_FOLDER + "Communication-Folder/computer_comms.log"
 EXTENSION_COMMS_LOG = LOCAL_FOLDER + "Communication-Folder/extension_comms.log"
 LAST_POSITION_FILE = LOCAL_FOLDER + "Communication-Folder/last_position.log"
 
-message_rate = 5 # message per second
+message_rate = 10 # message per second
 
 
 # Global variable to control monitoring
@@ -46,27 +46,15 @@ def clear_all_logs():
     log("All logs cleared on initialization.")
 
 def read_message():
-    """Read message received from the extension"""
-    raw_length = sys.stdin.buffer.read(4)
-    log(f"Raw length bytes: {raw_length}")
-    if len(raw_length) != 4:
-        log("Did not read 4 bytes for message length, exiting")
-        sys.exit(0)
-
-    message_length = struct.unpack('I', raw_length)[0]
-    log(f"Message length: {message_length}")
-
-    message_bytes = b""
-    while len(message_bytes) < message_length:
-        chunk = sys.stdin.buffer.read(message_length - len(message_bytes))
-        if not chunk:
-            log("No more data to read, exiting")
-            sys.exit(0)
-        message_bytes += chunk
-        log(f"Read {len(chunk)} bytes, total read: {len(message_bytes)} bytes")
-
-    log(f"Raw message bytes: {message_bytes}")
-    return message_bytes.decode('utf-8')
+    """Read a full JSON message from stdin using newline as a delimiter."""
+    buffer = sys.stdin.readline().strip()  # Read until newline
+    try:
+        message = json.loads(buffer)
+        log(f"Complete message received: {message}")
+        return message
+    except json.JSONDecodeError:
+        log(f"Failed to parse JSON message: {buffer}")
+        sys.exit(1)
 
 def send_message(response):
     """Sends message back to the extension"""
@@ -79,7 +67,7 @@ def send_message(response):
 
 def read_computer_comms():
     """Read the messages from MAIN_COMMUNICATION.py through the computer_comms.log file"""
-
+    # Utility functions
     def get_last_position():
         """Gets the line last read from the last_position.log file"""
         if os.path.exists(LAST_POSITION_FILE):
@@ -93,34 +81,41 @@ def read_computer_comms():
         with open(LAST_POSITION_FILE, "w") as file:
             file.write(str(position))
 
+    # Main function
     global message_rate
     last_position = get_last_position()
-    if os.path.exists(COMPUTER_COMMS_LOG):
-        while True:  # Continuous loop to keep monitoring
-            log("Monitoring computer comms")
-            with open(COMPUTER_COMMS_LOG, "r") as comm_file:
-                comm_file.seek(last_position)
-                new_lines = comm_file.readlines()
-                if new_lines:
-                    for line in new_lines:
-                        log(f"New message from computer_comms.log: {line.strip()}")
 
-                        # Attempt to parse the line as a dictionary
-                        try:
-                            message = ast.literal_eval(line.strip())
-                        except (SyntaxError, ValueError) as e:
-                            log(f"Failed to parse line: {line.strip()}. Error: {e}")
-                            continue  # Skip this line if parsing fails
+    if not os.path.exists(COMPUTER_COMMS_LOG):
+        log("computer_comms.log file does not exist")
+        return {}
 
-                        save_last_position(comm_file.tell())  # Save position after each action
+    while True:  # Continuous loop to keep monitoring
+        log("Monitoring computer comms")
+        with open(COMPUTER_COMMS_LOG, "r") as comm_file:
+            comm_file.seek(last_position)
+            new_lines = comm_file.readlines()
 
-                        return message
-                    
-                else:
-                    wait_time = 1 / message_rate
-                    time.sleep(wait_time)
-                    return {}  # Return empty message if no new messages
+            # If no new lines, wait for a while and check again
+            if not new_lines:
+                wait_time = 1 / message_rate
+                time.sleep(wait_time)
+                return {}
+            
+            # If new lines, process them
+            line = new_lines[0]
+            log(f"New message from computer_comms.log: {line.strip()}")
 
+            # Attempt to parse the line as a dictionary
+            try:
+                message = ast.literal_eval(line.strip())
+            except (SyntaxError, ValueError) as e:
+                log(f"Failed to parse line: {line.strip()}. Error: {e}")
+                continue  # Skip this line if parsing fails
+
+            save_last_position(comm_file.tell())  # Save position after each action
+
+            return message
+                
 def write_extension_comms(message):
     """Send message to MAIN_COMMUNICATION.py through the extension_comms.log file"""
 

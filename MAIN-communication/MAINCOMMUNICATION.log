@@ -1,7 +1,8 @@
-2024-11-18 16:49:42 - MAIN_COMMUNICATION started
-2024-11-18 16:49:42 - Monitoring extension comms
-2024-11-18 16:49:42 - /Users/killercookie/Jarvis-on-Github/Protocols/Protocol-analysis-protocols/map_protocols.py subprocess started with pipe.
-2024-11-18 16:49:42 - Sent message to /Users/killercookie/Jarvis-on-Github/Protocols/Protocol-analysis-protocols/map_protocols.py: {"action": "start"}
-2024-11-18 16:49:43 - Monitoring extension comms
-2024-11-18 16:49:44 - Monitoring extension comms
-2024-11-18 16:49:45 - Monitoring extension comms
+2025-03-06 11:20:10 - Log file /Users/killercookie/Jarvis-on-Github/MAIN-communication/MAINCOMMUNICATION.log cleared.
+2025-03-06 11:20:10 - Log file /Users/killercookie/Jarvis-on-Github/Communication-Folder/computer_comms.log cleared.
+2025-03-06 11:20:10 - Log file /Users/killercookie/Jarvis-on-Github/Communication-Folder/extension_comms.log cleared.
+2025-03-06 11:20:10 - All logs cleared.
+2025-03-06 11:20:10 - MAIN_COMMUNICATION started
+2025-03-06 11:20:10 - Handling message for MAIN_COMMUNICATION: {'action': 'activate_subprocess', 'input': {'script_path': 'Protocols/Other-protocols/template_protocol.py', 'input': {}, 'subprotocolID': 'subprocess_Protocols/Other-protocols/template_protocol.py_uEESrOt9aA5x'}, 'sender': 'Main-communication/MAIN_COMMUNICATION.py', 'receiver': 'Main-communication/MAIN_COMMUNICATION.py', 'messageID': 'Main-communication/MAIN_COMMUNICATION.py_uEESrOtRRE2P', 'other_info': {}}
+2025-03-06 11:20:10 - Waiting for subprocess_Protocols/Other-protocols/template_protocol.py_uEESrOt9aA5x to load...
+2025-03-06 11:20:10 - Subprocess Protocols/Other-protocols/template_protocol.py started.
